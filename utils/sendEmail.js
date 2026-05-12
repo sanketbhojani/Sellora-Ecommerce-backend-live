@@ -11,11 +11,15 @@ env.config();
 
 const createTransporter = () => {
     return nodemailer.createTransport({
-        service:"gmail",
+        service: "gmail",
         auth: {
             user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS
+            pass: process.env.EMAIL_PASS,
         },
+        // ✅ Timeout so it never hangs indefinitely
+        connectionTimeout: 10000,
+        greetingTimeout: 10000,
+        socketTimeout: 15000,
     });
 }
 
@@ -44,10 +48,9 @@ const sendOTPEmail = async ({ name, email, otp, role }) => {
         await transporter.sendMail(mailOptions);
         console.log(`OTP email sent to: ${email}`);
 
-
     } catch (error) {
-        console.error("Email sending failed:", error.message);
-        throw new Error("Failed to send OTP email. Please try again.")
+        // ✅ Log but NEVER throw — email failure must not block the API response
+        console.error("Email sending failed (non-blocking):", error.message);
     }
 
 };
@@ -75,12 +78,11 @@ const sendPasswordResetEmail = async ({ name, email, otp, role }) => {
         }
 
         await transporter.sendMail(mailOptions);
-    console.log(`Password reset email sent to: ${email}`);
-
+        console.log(`Password reset email sent to: ${email}`);
 
     } catch (error) {
-        console.error("Password reset email sending failed:", error.message);
-        throw new Error("Failed to send Password reset email. Please try again.")
+        // ✅ Log but NEVER throw — email failure must not block the API response
+        console.error("Password reset email sending failed (non-blocking):", error.message);
     }
 };
 

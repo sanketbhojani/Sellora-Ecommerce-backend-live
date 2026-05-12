@@ -63,7 +63,11 @@ const registerCustomer = async (req, res) => {
         });
 
         await newCustomer.save();
-        await sendOTPEmail({ name, email, otp, role: "Customer" });
+
+        // ✅ Fire-and-forget — don't await email, respond immediately
+        sendOTPEmail({ name, email, otp, role: "Customer" }).catch((err) =>
+            console.error("OTP email error (customer):", err.message)
+        );
 
         return res.status(201).json({
             success: true,
@@ -127,7 +131,11 @@ const registerSeller = async (req, res) => {
         });
 
         await newSeller.save();
-        await sendOTPEmail({ name, email, otp, role: "Seller" });
+
+        // ✅ Fire-and-forget
+        sendOTPEmail({ name, email, otp, role: "Seller" }).catch((err) =>
+            console.error("OTP email error (seller):", err.message)
+        );
 
         return res.status(201).json({
             success: true,
@@ -192,7 +200,11 @@ const registerAdmin = async (req, res) => {
         });
 
         await newAdmin.save();
-        await sendOTPEmail({ name, email, otp, role: "Admin" });
+
+        // ✅ Fire-and-forget
+        sendOTPEmail({ name, email, otp, role: "Admin" }).catch((err) =>
+            console.error("OTP email error (admin):", err.message)
+        );
 
         return res.status(201).json({
             success: true,
@@ -352,7 +364,10 @@ const resendOTP = async (req, res) => {
         user.otpExpiry = otpExpiry;
         await user.save();
 
-        await sendOTPEmail({ name: user.name, email: user.email, otp, role });
+        // ✅ Fire-and-forget
+        sendOTPEmail({ name: user.name, email: user.email, otp, role }).catch((err) =>
+            console.error("Resend OTP email error:", err.message)
+        );
 
         return res.status(200).json({
             success: true,
@@ -540,7 +555,10 @@ const forgotPassword = async (req, res) => {
         user.otpExpiry = otpExpiry;
         await user.save();
 
-        await sendPasswordResetEmail({ name: user.name, email: user.email, otp, role });
+        // ✅ Fire-and-forget
+        sendPasswordResetEmail({ name: user.name, email: user.email, otp, role }).catch((err) =>
+            console.error("Password reset email error:", err.message)
+        );
 
         return res.status(200).json({
             success: true,
