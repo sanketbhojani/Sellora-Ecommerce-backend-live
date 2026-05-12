@@ -64,10 +64,10 @@ const registerCustomer = async (req, res) => {
 
         await newCustomer.save();
 
-        // ✅ Fire-and-forget — don't await email, respond immediately
-        sendOTPEmail({ name, email, otp, role: "Customer" }).catch((err) =>
-            console.error("OTP email error (customer):", err.message)
-        );
+        // ✅ Await email for better debugging
+        console.log("Calling sendOTPEmail for customer registration...");
+        await sendOTPEmail({ name, email, otp, role: "Customer" });
+        console.log("sendOTPEmail call finished.");
 
         return res.status(201).json({
             success: true,
@@ -134,10 +134,9 @@ const registerSeller = async (req, res) => {
 
         await newSeller.save();
 
-        // ✅ Fire-and-forget
-        sendOTPEmail({ name, email, otp, role: "Seller" }).catch((err) =>
-            console.error("OTP email error (seller):", err.message)
-        );
+        // ✅ Await email
+        console.log("Calling sendOTPEmail for seller registration...");
+        await sendOTPEmail({ name, email, otp, role: "Seller" });
 
         return res.status(201).json({
             success: true,
@@ -205,10 +204,9 @@ const registerAdmin = async (req, res) => {
 
         await newAdmin.save();
 
-        // ✅ Fire-and-forget
-        sendOTPEmail({ name, email, otp, role: "Admin" }).catch((err) =>
-            console.error("OTP email error (admin):", err.message)
-        );
+        // ✅ Await email
+        console.log("Calling sendOTPEmail for admin registration...");
+        await sendOTPEmail({ name, email, otp, role: "Admin" });
 
         return res.status(201).json({
             success: true,

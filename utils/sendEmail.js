@@ -11,10 +11,12 @@ env.config();
 
 const createTransporter = () => {
     return nodemailer.createTransport({
-        service: "gmail",
+        host: "smtp.gmail.com",
+        port: 465,
+        secure: true, // use SSL
         auth: {
             user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS,
+            pass: process.env.EMAIL_PASS?.replace(/\s/g, ""), // Strip spaces for reliability
         },
         // ✅ Timeout so it never hangs indefinitely
         connectionTimeout: 10000,
@@ -24,7 +26,12 @@ const createTransporter = () => {
 }
 
 const sendOTPEmail = async ({ name, email, otp, role }) => {
+    console.log(`Starting sendOTPEmail to: ${email}`);
     try {
+        console.log("Environment check:", {
+            user: process.env.EMAIL_USER ? "set" : "MISSING",
+            pass: process.env.EMAIL_PASS ? "set" : "MISSING"
+        });
         const templatePath = path.join(
             __dirname,
             "../views/emails/otpEmail.ejs"
@@ -45,8 +52,9 @@ const sendOTPEmail = async ({ name, email, otp, role }) => {
             html: htmlContent,
         };
 
+        console.log("Attempting to send email...");
         await transporter.sendMail(mailOptions);
-        console.log(`OTP email sent to: ${email}`);
+        console.log(`✅ Success: OTP email sent to: ${email}`);
 
     } catch (error) {
         // ✅ Log but NEVER throw — email failure must not block the API response
