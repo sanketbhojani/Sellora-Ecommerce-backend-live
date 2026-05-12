@@ -449,7 +449,7 @@ router.delete("/admins/:id", deleteAdmin);
 /**
  * @swagger
  * /admin/admins/{id}:
- *   put:
+ *   post:
  *     summary: Update an admin account
  *     description: Updates an administrator's details. (Admin only)
  *     tags: [Admin]
@@ -481,6 +481,6 @@ router.delete("/admins/:id", deleteAdmin);
  *       404:
  *         description: Admin not found
  */
-router.put("/admins/:id", updateAdmin);
+router.post("/admins/update/:id", updateAdmin);
 
 export default router;
