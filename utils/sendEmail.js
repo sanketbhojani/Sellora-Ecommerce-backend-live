@@ -48,9 +48,16 @@ const sendOTPEmail = async ({ name, email, otp, role }) => {
         const mailOptions = {
             from: `"Sellora" <${process.env.EMAIL_USER}>`,
             to: email,
-            subject: "🛍️ Welcome to Sellora! Your OTP Verification Code",
+            subject: role === "Admin" 
+                ? "🔐 Sellora Admin Panel - OTP Verification" 
+                : "🛍️ Welcome to Sellora! Your OTP Verification Code",
             html: htmlContent,
         };
+
+        console.log("Mail options prepared:", {
+            to: mailOptions.to,
+            subject: mailOptions.subject
+        });
 
         console.log("Attempting to send email...");
         await transporter.sendMail(mailOptions);
