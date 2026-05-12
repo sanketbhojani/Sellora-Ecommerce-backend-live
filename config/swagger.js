@@ -1,5 +1,11 @@
 import swaggerJSDoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+// ✅ Resolve __dirname for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const options = {
     definition: {
@@ -11,8 +17,8 @@ const options = {
         },
         servers: [
             {
-                url: process.env.NODE_ENV === 'production' 
-                     ? 'https://sellora-ecommerce-backend-live.onrender.com/api' // Updated to match exact render URL
+                url: process.env.NODE_ENV === 'production'
+                     ? 'https://sellora-ecommerce-backend-live.onrender.com/api'
                      : 'http://localhost:6666/api',
                 description: 'API Server'
             }
@@ -30,7 +36,8 @@ const options = {
             bearerAuth: []
         }]
     },
-    apis: ['./routes/*.js'], // Path to the API docs (all files in routes folder)
+    // ✅ Absolute path — works on local & Render regardless of CWD
+    apis: [join(__dirname, '../routes/*.js')],
 };
 
 const swaggerSpec = swaggerJSDoc(options);
