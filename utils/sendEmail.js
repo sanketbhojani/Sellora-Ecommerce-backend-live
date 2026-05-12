@@ -50,7 +50,10 @@ const sendOTPEmail = async ({ name, email, otp, role }) => {
 
     } catch (error) {
         // ✅ Log but NEVER throw — email failure must not block the API response
-        console.error("Email sending failed (non-blocking):", error.message);
+        console.error("❌ OTP Email sending failed:", error.message);
+        console.error("   Error code:", error.code);
+        console.error("   Recipient:", email);
+        console.error("   Full error:", error);
     }
 
 };
@@ -82,7 +85,10 @@ const sendPasswordResetEmail = async ({ name, email, otp, role }) => {
 
     } catch (error) {
         // ✅ Log but NEVER throw — email failure must not block the API response
-        console.error("Password reset email sending failed (non-blocking):", error.message);
+        console.error("❌ Password reset email sending failed:", error.message);
+        console.error("   Error code:", error.code);
+        console.error("   Recipient:", email);
+        console.error("   Full error:", error);
     }
 };
 

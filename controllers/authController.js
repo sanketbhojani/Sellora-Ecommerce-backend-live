@@ -76,8 +76,10 @@ const registerCustomer = async (req, res) => {
                 name: newCustomer.name,
                 email: newCustomer.email,
                 isVerified: newCustomer.isVerified,
+                // ✅ DEV ONLY: expose OTP so you can test via Swagger without checking email
+                ...(process.env.NODE_ENV !== 'production' && { otp }),
             },
-            message: "Customer registered successfully. Please check your email for OTP verification.",
+            message: "Customer registered successfully. OTP sent to email. Use the OTP from 'data.otp' (dev only) or check your inbox.",
         });
 
     } catch (error) {
@@ -146,8 +148,10 @@ const registerSeller = async (req, res) => {
                 shopName: newSeller.shopName,
                 isVerified: newSeller.isVerified,
                 isApproved: newSeller.isApproved,
+                // ✅ DEV ONLY: expose OTP so you can test via Swagger without checking email
+                ...(process.env.NODE_ENV !== 'production' && { otp }),
             },
-            message: "Seller registered successfully. Please check your email for OTP. After verification, wait for admin approval.",
+            message: "Seller registered successfully. OTP sent to email. Use the OTP from 'data.otp' (dev only) or check your inbox.",
         });
 
     } catch (error) {
@@ -213,8 +217,10 @@ const registerAdmin = async (req, res) => {
                 name: newAdmin.name,
                 email: newAdmin.email,
                 isVerified: newAdmin.isVerified,
+                // ✅ DEV ONLY: expose OTP so you can test via Swagger without checking email
+                ...(process.env.NODE_ENV !== 'production' && { otp }),
             },
-            message: "Admin created successfully. Check email for OTP verification.",
+            message: "Admin created successfully. OTP sent to email. Use the OTP from 'data.otp' (dev only) or check your inbox.",
         });
 
     } catch (error) {

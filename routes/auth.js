@@ -42,7 +42,9 @@ const router  = express.Router();
  *                 example: "9316410977"
  *     responses:
  *       201:
- *         description: Customer registered successfully. OTP sent to email.
+ *         description: |
+ *           Customer registered successfully. OTP sent to email.
+ *           **DEV mode:** The response also contains `data.otp` with the OTP value for Swagger testing — copy it directly into the verifyOTP call.
  *       400:
  *         description: All fields required / Passwords do not match / User already exists
  */
@@ -85,7 +87,9 @@ router.post('/register/registerCustomer',registerCustomer)
  *                 example: Best shop in town
  *     responses:
  *       201:
- *         description: Seller registered. OTP sent. Awaiting admin approval.
+ *         description: |
+ *           Seller registered. OTP sent. Awaiting admin approval.
+ *           **DEV mode:** The response also contains `data.otp` with the OTP value for Swagger testing — copy it directly into the verifyOTP call.
  *       400:
  *         description: Missing fields / Passwords do not match / Seller already exists
  */
@@ -127,7 +131,9 @@ router.post('/register/registerSeller',registerSeller)
  *                 example: false
  *     responses:
  *       201:
- *         description: Admin created. OTP sent to email.
+ *         description: |
+ *           Admin created. OTP sent to email.
+ *           **DEV mode:** The response also contains `data.otp` with the OTP value for Swagger testing — copy it directly into the verifyOTP call.
  *       400:
  *         description: Missing fields / Passwords do not match / Email already registered
  *       403:
