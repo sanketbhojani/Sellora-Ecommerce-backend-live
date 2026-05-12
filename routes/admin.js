@@ -348,12 +348,31 @@ router.get("/getAllReviews", getAllReviewsAdmin);
  * /admin/admins:
  *   get:
  *     summary: Get all admins
+ *     description: Returns a paginated list of all administrators. (Admin only)
  *     tags: [Admin]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search by name or email
  *     responses:
  *       200:
  *         description: List of all admins
+ *       401:
+ *         description: Unauthorized
  */
 router.get("/admins", getAllAdmins);
 
@@ -362,6 +381,7 @@ router.get("/admins", getAllAdmins);
  * /admin/admins/add:
  *   post:
  *     summary: Create a new admin account
+ *     description: Creates a new administrator and sends an OTP verification email. (Admin only)
  *     tags: [Admin]
  *     security:
  *       - bearerAuth: []
@@ -375,17 +395,27 @@ router.get("/admins", getAllAdmins);
  *             properties:
  *               name:
  *                 type: string
+ *                 example: New Admin
  *               email:
  *                 type: string
+ *                 example: newadmin@sellora.com
  *               password:
  *                 type: string
+ *                 example: admin123
  *               confirmPassword:
  *                 type: string
+ *                 example: admin123
  *               phone:
  *                 type: string
+ *                 example: "9876543210"
+ *               isSuperAdmin:
+ *                 type: boolean
+ *                 example: false
  *     responses:
  *       201:
- *         description: Admin created successfully
+ *         description: Admin created successfully. OTP sent to email.
+ *       400:
+ *         description: All fields required / Passwords do not match / Email already registered
  */
 router.post("/admins/add", registerAdmin);
 
@@ -394,6 +424,7 @@ router.post("/admins/add", registerAdmin);
  * /admin/admins/{id}:
  *   delete:
  *     summary: Delete an admin account
+ *     description: Permanently deletes an administrator account. (Admin only)
  *     tags: [Admin]
  *     security:
  *       - bearerAuth: []
@@ -406,7 +437,11 @@ router.post("/admins/add", registerAdmin);
  *         description: Admin ID
  *     responses:
  *       200:
- *         description: Admin deleted
+ *         description: Admin deleted successfully
+ *       400:
+ *         description: Cannot delete your own account
+ *       404:
+ *         description: Admin not found
  */
 router.delete("/admins/:id", deleteAdmin);
 
