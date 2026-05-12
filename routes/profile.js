@@ -13,26 +13,25 @@ import upload from "../middlewares/uploadMiddleware.js";
  * @swagger
  * tags:
  *   name: Profile
- *   description: User profile management endpoints
+ *   description: User profile management
  */
 
 const router = express.Router();
-
 router.use(protect);
 
 /**
  * @swagger
  * /profile/getProfile:
  *   get:
- *     summary: Get current user's profile (all roles)
+ *     summary: Get logged-in user's profile (all roles)
  *     tags: [Profile]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: User profile data
- *       401:
- *         description: Not authenticated
+ *         description: Profile data
+ *       404:
+ *         description: User not found
  */
 router.get(
     "/getProfile",
@@ -44,7 +43,7 @@ router.get(
  * @swagger
  * /profile/updateCustomerProfile:
  *   post:
- *     summary: Update customer profile
+ *     summary: Update customer profile (name and/or avatar only)
  *     tags: [Profile]
  *     security:
  *       - bearerAuth: []
@@ -56,14 +55,15 @@ router.get(
  *             properties:
  *               name:
  *                 type: string
- *               phone:
- *                 type: string
+ *                 example: Sanket Bhojani
  *               avatar:
  *                 type: string
  *                 format: binary
  *     responses:
  *       200:
- *         description: Customer profile updated
+ *         description: Profile updated
+ *       400:
+ *         description: Email/phone cannot be changed / Nothing to update
  */
 router.post(
     "/updateCustomerProfile",
@@ -76,7 +76,7 @@ router.post(
  * @swagger
  * /profile/updateSellerProfile:
  *   post:
- *     summary: Update seller profile
+ *     summary: Update seller profile (name, shopName, shopDescription, avatar)
  *     tags: [Profile]
  *     security:
  *       - bearerAuth: []
@@ -88,14 +88,21 @@ router.post(
  *             properties:
  *               name:
  *                 type: string
- *               businessName:
+ *                 example: John Seller
+ *               shopName:
  *                 type: string
+ *                 example: My Updated Shop
+ *               shopDescription:
+ *                 type: string
+ *                 example: Best electronics store
  *               avatar:
  *                 type: string
  *                 format: binary
  *     responses:
  *       200:
  *         description: Seller profile updated
+ *       400:
+ *         description: Email/phone cannot be changed / Nothing to update
  */
 router.post(
     "/updateSellerProfile",
@@ -108,7 +115,7 @@ router.post(
  * @swagger
  * /profile/updateAdminProfile:
  *   post:
- *     summary: Update admin profile
+ *     summary: Update admin profile (name, phone, avatar)
  *     tags: [Profile]
  *     security:
  *       - bearerAuth: []
@@ -120,12 +127,18 @@ router.post(
  *             properties:
  *               name:
  *                 type: string
+ *                 example: Admin User
+ *               phone:
+ *                 type: string
+ *                 example: "9000000001"
  *               avatar:
  *                 type: string
  *                 format: binary
  *     responses:
  *       200:
  *         description: Admin profile updated
+ *       400:
+ *         description: Email cannot be changed / Nothing to update
  */
 router.post(
     "/updateAdminProfile",
@@ -144,7 +157,9 @@ router.post(
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Avatar deleted successfully
+ *         description: Avatar deleted
+ *       400:
+ *         description: No avatar to delete
  */
 router.delete(
     "/deleteAvatar",

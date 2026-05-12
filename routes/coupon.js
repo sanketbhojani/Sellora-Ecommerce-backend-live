@@ -10,14 +10,13 @@ import { authorizeRoles, protect } from '../middlewares/authMiddleware.js';
  */
 
 const router = express.Router();
-
 router.use(protect);
 
 /**
  * @swagger
  * /coupon/applyCoupon:
  *   post:
- *     summary: Apply a coupon code (customer only)
+ *     summary: Apply a coupon code to cart (customer only)
  *     tags: [Coupon]
  *     security:
  *       - bearerAuth: []
@@ -31,11 +30,12 @@ router.use(protect);
  *             properties:
  *               code:
  *                 type: string
+ *                 example: SAVE20
  *     responses:
  *       200:
- *         description: Coupon applied successfully
+ *         description: Coupon applied — returns discount details
  *       400:
- *         description: Invalid or expired coupon
+ *         description: Invalid / expired coupon or empty cart
  */
 router.post('/applyCoupon',authorizeRoles("customer"),applyCoupon);
 
@@ -53,17 +53,36 @@ router.post('/applyCoupon',authorizeRoles("customer"),applyCoupon);
  *         application/json:
  *           schema:
  *             type: object
+ *             required: [code, discountType, discountValue, expiresAt]
  *             properties:
  *               code:
  *                 type: string
- *               discount:
+ *                 example: SAVE20
+ *               discountType:
+ *                 type: string
+ *                 enum: [percentage, flat]
+ *                 example: percentage
+ *               discountValue:
  *                 type: number
- *               expiryDate:
+ *                 example: 20
+ *               minOrderAmount:
+ *                 type: number
+ *                 example: 500
+ *               maxDiscountAmount:
+ *                 type: number
+ *                 example: 200
+ *               usageLimit:
+ *                 type: number
+ *                 example: 100
+ *               expiresAt:
  *                 type: string
  *                 format: date
+ *                 example: "2025-12-31"
  *     responses:
  *       201:
  *         description: Coupon created
+ *       400:
+ *         description: Duplicate code or invalid value
  */
 router.post('/createCoupon',authorizeRoles("admin"),createCoupon);
 
@@ -75,9 +94,22 @@ router.post('/createCoupon',authorizeRoles("admin"),createCoupon);
  *     tags: [Coupon]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: number
+ *       - in: query
+ *         name: isActive
+ *         schema:
+ *           type: boolean
  *     responses:
  *       200:
- *         description: List of all coupons
+ *         description: Coupons list
  */
 router.get('/getAllCoupons',authorizeRoles("admin"),getAllCoupons);
 
@@ -85,7 +117,7 @@ router.get('/getAllCoupons',authorizeRoles("admin"),getAllCoupons);
  * @swagger
  * /coupon/updateCoupon/{id}:
  *   post:
- *     summary: Update a coupon (admin only)
+ *     summary: Update coupon fields (admin only)
  *     tags: [Coupon]
  *     security:
  *       - bearerAuth: []
@@ -95,7 +127,21 @@ router.get('/getAllCoupons',authorizeRoles("admin"),getAllCoupons);
  *         required: true
  *         schema:
  *           type: string
- *         description: Coupon ID
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               discountValue:
+ *                 type: number
+ *               minOrderAmount:
+ *                 type: number
+ *               expiresAt:
+ *                 type: string
+ *                 format: date
+ *               usageLimit:
+ *                 type: number
  *     responses:
  *       200:
  *         description: Coupon updated
@@ -116,7 +162,6 @@ router.post('/updateCoupon/:id',authorizeRoles("admin"),updateCoupon);
  *         required: true
  *         schema:
  *           type: string
- *         description: Coupon ID
  *     responses:
  *       200:
  *         description: Coupon deleted
@@ -127,7 +172,7 @@ router.delete('/deleteCoupon/:id',authorizeRoles("admin"),deleteCoupon);
  * @swagger
  * /coupon/toggleCouponStatus/{id}:
  *   post:
- *     summary: Toggle coupon active/inactive status (admin only)
+ *     summary: Toggle coupon active/inactive (admin only)
  *     tags: [Coupon]
  *     security:
  *       - bearerAuth: []
@@ -137,10 +182,9 @@ router.delete('/deleteCoupon/:id',authorizeRoles("admin"),deleteCoupon);
  *         required: true
  *         schema:
  *           type: string
- *         description: Coupon ID
  *     responses:
  *       200:
- *         description: Coupon status toggled
+ *         description: Status toggled
  */
 router.post('/toggleCouponStatus/:id',authorizeRoles("admin"),toggleCouponStatus);
 

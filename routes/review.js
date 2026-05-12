@@ -11,29 +11,38 @@ import upload from '../middlewares/uploadMiddleware.js';
  */
 
 const router = express.Router();
-
 router.use(protect);
 
 /**
  * @swagger
  * /review/addReview:
  *   post:
- *     summary: Add a product review (customer only)
+ *     summary: Add a review for a delivered product (customer only)
  *     tags: [Review]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
+ *       required: true
  *       content:
  *         multipart/form-data:
  *           schema:
  *             type: object
+ *             required: [productId, orderId, rating]
  *             properties:
  *               productId:
  *                 type: string
+ *                 example: 664a1b2c3d4e5f6789012345
+ *               orderId:
+ *                 type: string
+ *                 example: 664a1b2c3d4e5f6789012346
  *               rating:
  *                 type: number
+ *                 minimum: 1
+ *                 maximum: 5
+ *                 example: 4
  *               comment:
  *                 type: string
+ *                 example: Great product, fast delivery!
  *               images:
  *                 type: array
  *                 items:
@@ -41,7 +50,11 @@ router.use(protect);
  *                   format: binary
  *     responses:
  *       201:
- *         description: Review added
+ *         description: Review added successfully
+ *       400:
+ *         description: Missing fields / Already reviewed
+ *       403:
+ *         description: Can only review from delivered orders
  */
 router.post('/addReview',authorizeRoles("customer"),upload.array("images",3),addReview)
 
@@ -49,7 +62,7 @@ router.post('/addReview',authorizeRoles("customer"),upload.array("images",3),add
  * @swagger
  * /review/updateReview/{id}:
  *   post:
- *     summary: Update a review (customer only)
+ *     summary: Update own review (customer only)
  *     tags: [Review]
  *     security:
  *       - bearerAuth: []
@@ -68,8 +81,12 @@ router.post('/addReview',authorizeRoles("customer"),upload.array("images",3),add
  *             properties:
  *               rating:
  *                 type: number
+ *                 minimum: 1
+ *                 maximum: 5
+ *                 example: 5
  *               comment:
  *                 type: string
+ *                 example: Updated review comment
  *               images:
  *                 type: array
  *                 items:
@@ -78,6 +95,8 @@ router.post('/addReview',authorizeRoles("customer"),upload.array("images",3),add
  *     responses:
  *       200:
  *         description: Review updated
+ *       404:
+ *         description: Review not found
  */
 router.post('/updateReview/:id',authorizeRoles("customer"),upload.array("images",3),updateReview)
 
@@ -99,6 +118,8 @@ router.post('/updateReview/:id',authorizeRoles("customer"),upload.array("images"
  *     responses:
  *       200:
  *         description: Review deleted
+ *       404:
+ *         description: Review not found
  */
 router.delete('/deleteReview/:id',authorizeRoles("customer"),deleteReview)
 
@@ -120,6 +141,8 @@ router.delete('/deleteReview/:id',authorizeRoles("customer"),deleteReview)
  *     responses:
  *       200:
  *         description: Review deleted by admin
+ *       404:
+ *         description: Review not found
  */
 router.delete('/deleteReviewByAdmin/:id',authorizeRoles("admin"),deleteReviewByAdmin)
 
@@ -127,7 +150,7 @@ router.delete('/deleteReviewByAdmin/:id',authorizeRoles("admin"),deleteReviewByA
  * @swagger
  * /review/getProductReviews/{productId}:
  *   get:
- *     summary: Get reviews for a product
+ *     summary: Get reviews for a product (with pagination & rating filter)
  *     tags: [Review]
  *     parameters:
  *       - in: path
@@ -135,10 +158,24 @@ router.delete('/deleteReviewByAdmin/:id',authorizeRoles("admin"),deleteReviewByA
  *         required: true
  *         schema:
  *           type: string
- *         description: Product ID
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: number
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: number
+ *           default: 10
+ *       - in: query
+ *         name: rating
+ *         schema:
+ *           type: number
+ *           enum: [1, 2, 3, 4, 5]
  *     responses:
  *       200:
- *         description: Product reviews
+ *         description: Reviews fetched with rating breakdown
  */
 router.get('/getProductReviews/:productId',getProductReviews)
 
@@ -146,13 +183,13 @@ router.get('/getProductReviews/:productId',getProductReviews)
  * @swagger
  * /review/getMyReviews:
  *   get:
- *     summary: Get current customer's reviews
+ *     summary: Get all reviews written by current customer
  *     tags: [Review]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Customer reviews
+ *         description: Customer reviews list
  */
 router.get('/getMyReviews',authorizeRoles("customer"),getMyReviews)
 

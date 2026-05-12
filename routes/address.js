@@ -10,14 +10,13 @@ import { addAddress, deleteAddress, getAddressById, getAddresses, setDefaultAddr
  */
 
 const router = express.Router();
-
 router.use(protect,authorizeRoles("customer"));
 
 /**
  * @swagger
  * /address/addAddress:
  *   post:
- *     summary: Add a new address
+ *     summary: Add a new delivery address
  *     tags: [Address]
  *     security:
  *       - bearerAuth: []
@@ -27,18 +26,47 @@ router.use(protect,authorizeRoles("customer"));
  *         application/json:
  *           schema:
  *             type: object
+ *             required: [fullname, phone, addressLine1, city, state, pincode]
  *             properties:
- *               street:
+ *               fullname:
  *                 type: string
+ *                 example: Sanket Bhojani
+ *               phone:
+ *                 type: string
+ *                 example: "9316410977"
+ *               addressLine1:
+ *                 type: string
+ *                 example: 12, MG Road
+ *               addressLine2:
+ *                 type: string
+ *                 example: Near City Mall
  *               city:
  *                 type: string
+ *                 example: Surat
  *               state:
  *                 type: string
+ *                 example: Gujarat
  *               pincode:
  *                 type: string
+ *                 example: "395001"
+ *               country:
+ *                 type: string
+ *                 default: India
+ *                 example: India
+ *               addressType:
+ *                 type: string
+ *                 enum: [home, work, other]
+ *                 default: home
+ *                 example: home
+ *               isDefault:
+ *                 type: boolean
+ *                 default: false
+ *                 example: true
  *     responses:
  *       201:
- *         description: Address added
+ *         description: Address added successfully
+ *       400:
+ *         description: Missing required fields
  */
 router.post('/addAddress',addAddress)
 
@@ -52,7 +80,7 @@ router.post('/addAddress',addAddress)
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: List of addresses
+ *         description: Addresses fetched successfully
  */
 router.get('/getAddresses',getAddresses)
 
@@ -60,7 +88,7 @@ router.get('/getAddresses',getAddresses)
  * @swagger
  * /address/getAddressById/{id}:
  *   get:
- *     summary: Get address by ID
+ *     summary: Get a specific address by ID
  *     tags: [Address]
  *     security:
  *       - bearerAuth: []
@@ -70,9 +98,12 @@ router.get('/getAddresses',getAddresses)
  *         required: true
  *         schema:
  *           type: string
+ *         description: Address ID
  *     responses:
  *       200:
- *         description: Address data
+ *         description: Address fetched successfully
+ *       404:
+ *         description: Address not found
  */
 router.get('/getAddressById/:id',getAddressById)
 
@@ -90,9 +121,12 @@ router.get('/getAddressById/:id',getAddressById)
  *         required: true
  *         schema:
  *           type: string
+ *         description: Address ID
  *     responses:
  *       200:
  *         description: Default address updated
+ *       404:
+ *         description: Address not found
  */
 router.post('/setDefaultAddress/:id',setDefaultAddress)
 
@@ -110,9 +144,39 @@ router.post('/setDefaultAddress/:id',setDefaultAddress)
  *         required: true
  *         schema:
  *           type: string
+ *         description: Address ID
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               fullname:
+ *                 type: string
+ *               phone:
+ *                 type: string
+ *               addressLine1:
+ *                 type: string
+ *               addressLine2:
+ *                 type: string
+ *               city:
+ *                 type: string
+ *               state:
+ *                 type: string
+ *               pincode:
+ *                 type: string
+ *               country:
+ *                 type: string
+ *               addressType:
+ *                 type: string
+ *                 enum: [home, work, other]
+ *               isDefault:
+ *                 type: boolean
  *     responses:
  *       200:
- *         description: Address updated
+ *         description: Address updated successfully
+ *       404:
+ *         description: Address not found
  */
 router.post('/updateAddress/:id',updateAddress)
 
@@ -130,9 +194,12 @@ router.post('/updateAddress/:id',updateAddress)
  *         required: true
  *         schema:
  *           type: string
+ *         description: Address ID
  *     responses:
  *       200:
- *         description: Address deleted
+ *         description: Address deleted successfully
+ *       404:
+ *         description: Address not found
  */
 router.delete('/deleteAddress/:id',deleteAddress)
 export default router;
