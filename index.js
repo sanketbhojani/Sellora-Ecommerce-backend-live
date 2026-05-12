@@ -7,6 +7,7 @@ import router from './routes/router.js';
 import cookieParser from 'cookie-parser';
 import { authLimiter, generalLimiter, helmet,mongoSanitize } from './middlewares/securityMiddleware.js';
 import errorHandler from './middlewares/errorMiddleware.js';
+import { swaggerDocs } from './config/swagger.js';
 const app = express();
 
 // ✅ CORS — allow React frontends
@@ -35,6 +36,9 @@ const port = +process.env.PORT || 6666;
 app.use(cookieParser());
 
 app.use('/api',router);
+
+// ✅ Initialize Swagger Docs
+swaggerDocs(app);
 
 // ✅ Rate limiting
 // app.use("/api", generalLimiter);
