@@ -17,7 +17,10 @@ import {
     deactiveProduct,
     getInactiveProduct,
     getAllReviewsAdmin,
+    getAllAdmins,
+    deleteAdmin,
 } from "../controllers/adminController.js";
+import { registerAdmin } from "../controllers/authController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
@@ -339,5 +342,72 @@ router.get("/getOrdersBySeller/:sellerId", getOrdersBySeller);
  *         description: List of all reviews
  */
 router.get("/getAllReviews", getAllReviewsAdmin);
+
+/**
+ * @swagger
+ * /admin/admins:
+ *   get:
+ *     summary: Get all admins
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of all admins
+ */
+router.get("/admins", getAllAdmins);
+
+/**
+ * @swagger
+ * /admin/admins/add:
+ *   post:
+ *     summary: Create a new admin account
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name, email, password, confirmPassword]
+ *             properties:
+ *               name:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *               confirmPassword:
+ *                 type: string
+ *               phone:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Admin created successfully
+ */
+router.post("/admins/add", registerAdmin);
+
+/**
+ * @swagger
+ * /admin/admins/{id}:
+ *   delete:
+ *     summary: Delete an admin account
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Admin ID
+ *     responses:
+ *       200:
+ *         description: Admin deleted
+ */
+router.delete("/admins/:id", deleteAdmin);
 
 export default router;

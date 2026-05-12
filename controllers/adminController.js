@@ -4,6 +4,7 @@ import { Seller } from "../models/Seller.js";
 import { Product } from "../models/Product.js";
 import { Order } from "../models/Order.js";
 import { Review } from "../models/Review.js";
+import { Admin } from "../models/Admin.js";
 
 // ─── DASHBOARD STATS ──────────────────────────────────────────
 
@@ -965,6 +966,90 @@ const getAllReviewsAdmin = async (req, res) => {
     }
 };
 
+// ─── ADMIN MANAGEMENT ─────────────────────────────────────────
+
+const getAllAdmins = async (req, res) => {
+    try {
+        const { page = 1, limit = 10, search } = req.query;
+        const filter = {};
+
+        if (search) {
+            filter.$or = [
+                { name: { $regex: search, $options: "i" } },
+                { email: { $regex: search, $options: "i" } },
+            ];
+        }
+
+        const skip = (Number(page) - 1) * Number(limit);
+
+        const [admins, total] = await Promise.all([
+            Admin.find(filter)
+                .select("-password -otp -otpExpiry")
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(Number(limit)),
+            Admin.countDocuments(filter),
+        ]);
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                admins,
+                total,
+                page: Number(page),
+                totalPages: Math.ceil(total / Number(limit)),
+            },
+            message: "Admins fetched successfully",
+        });
+
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error.message,
+        });
+    }
+};
+
+const deleteAdmin = async (req, res) => {
+    try {
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid admin ID",
+            });
+        }
+
+        const admin = await Admin.findById(req.params.id);
+        if (!admin) {
+            return res.status(404).json({
+                success: false,
+                message: "Admin not found",
+            });
+        }
+
+        // Prevent deleting self
+        if (String(admin._id) === String(req.user._id)) {
+            return res.status(400).json({
+                success: false,
+                message: "You cannot delete your own admin account",
+            });
+        }
+
+        await admin.deleteOne();
+
+        return res.status(200).json({
+            success: true,
+            message: `Admin "${admin.name}" deleted successfully`,
+        });
+
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error.message,
+        });
+    }
+};
+
 export {
     getDashboardStats,
     getAllCustomers,
@@ -983,4 +1068,6 @@ export {
     activateUser,
     deactivateUser,
     getAllReviewsAdmin,
+    getAllAdmins,
+    deleteAdmin,
 };
