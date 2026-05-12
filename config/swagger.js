@@ -12,7 +12,7 @@ const options = {
         servers: [
             {
                 url: process.env.NODE_ENV === 'production' 
-                     ? 'https://sellora-ecommerce-backend.onrender.com/api' // Make sure this matches the render URL
+                     ? 'https://sellora-ecommerce-backend-live.onrender.com/api' // Updated to match exact render URL
                      : 'http://localhost:6666/api',
                 description: 'API Server'
             }
