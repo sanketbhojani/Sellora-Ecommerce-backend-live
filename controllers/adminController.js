@@ -1050,6 +1050,45 @@ const deleteAdmin = async (req, res) => {
     }
 };
 
+const updateAdmin = async (req, res) => {
+    try {
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid admin ID",
+            });
+        }
+
+        const { name, phone, isSuperAdmin } = req.body;
+        const admin = await Admin.findById(req.params.id);
+
+        if (!admin) {
+            return res.status(404).json({
+                success: false,
+                message: "Admin not found",
+            });
+        }
+
+        if (name) admin.name = name;
+        if (phone) admin.phone = phone;
+        if (isSuperAdmin !== undefined) admin.isSuperAdmin = isSuperAdmin;
+
+        await admin.save();
+
+        return res.status(200).json({
+            success: true,
+            data: admin,
+            message: "Admin updated successfully",
+        });
+
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error.message,
+        });
+    }
+};
+
 export {
     getDashboardStats,
     getAllCustomers,
@@ -1070,4 +1109,5 @@ export {
     getAllReviewsAdmin,
     getAllAdmins,
     deleteAdmin,
+    updateAdmin,
 };

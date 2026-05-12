@@ -19,6 +19,7 @@ import {
     getAllReviewsAdmin,
     getAllAdmins,
     deleteAdmin,
+    updateAdmin,
 } from "../controllers/adminController.js";
 import { registerAdmin } from "../controllers/authController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
@@ -444,5 +445,42 @@ router.post("/admins/add", registerAdmin);
  *         description: Admin not found
  */
 router.delete("/admins/:id", deleteAdmin);
+
+/**
+ * @swagger
+ * /admin/admins/{id}:
+ *   put:
+ *     summary: Update an admin account
+ *     description: Updates an administrator's details. (Admin only)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Admin ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               phone:
+ *                 type: string
+ *               isSuperAdmin:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Admin updated successfully
+ *       404:
+ *         description: Admin not found
+ */
+router.put("/admins/:id", updateAdmin);
 
 export default router;
