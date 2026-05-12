@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>OTP Verification - Sellora</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+      background-color: #0d0d0d;
+      padding: 30px 15px;
+    }
+
+    .wrapper {
+      max-width: 600px;
+      margin: 0 auto;
+      background-color: #1a1a2e;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 8px 40px rgba(156, 39, 176, 0.15), 0 2px 10px rgba(0,0,0,0.6);
+    }
+
+    /* ── Premium Header with gradient ── */
+    .header {
+      background: linear-gradient(135deg, #9c27b0 0%, #7b1fa2 40%, #FF6B35 100%);
+      padding: 40px 30px 35px;
+      text-align: center;
+      position: relative;
+    }
+
+    .header::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, #FF6B35, #9c27b0, #FF6B35);
+    }
+
+    .logo-img {
+      width: 160px;
+      height: auto;
+      margin-bottom: 12px;
+      border-radius: 8px;
+    }
+
+    .header-tagline {
+      color: rgba(255,255,255,0.9);
+      font-size: 13px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      font-weight: 500;
+    }
+
+    /* ── Decorative Divider ── */
+    .divider {
+      height: 3px;
+      background: linear-gradient(90deg, transparent, #9c27b0, #FF6B35, transparent);
+      margin: 0 30px;
+    }
+
+    /* ── Body ── */
+    .body {
+      padding: 40px 35px;
+    }
+
+    .greeting {
+      font-size: 22px;
+      color: #ffffff;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .greeting span {
+      color: #FF6B35;
+    }
+
+    .sub-text {
+      font-size: 15px;
+      color: #a0a0b8;
+      line-height: 1.8;
+      margin-bottom: 32px;
+    }
+
+    .sub-text strong {
+      color: #e0e0e0;
+    }
+
+    .sub-text .role-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, #9c27b0, #7b1fa2);
+      color: #ffffff;
+      padding: 3px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      vertical-align: middle;
+    }
+
+    /* ── OTP Container ── */
+    .otp-container {
+      background: linear-gradient(145deg, #16162a, #1e1e3a);
+      border: 1px solid rgba(156, 39, 176, 0.3);
+      border-radius: 16px;
+      padding: 30px 20px;
+      text-align: center;
+      margin-bottom: 30px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .otp-container::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, #9c27b0, #FF6B35);
+    }
+
+    .otp-label {
+      font-size: 11px;
+      color: #8888aa;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      margin-bottom: 16px;
+      font-weight: 600;
+    }
+
+    /* ── Individual OTP Digit Boxes ── */
+    .otp-digits {
+      display: inline-block;
+      margin-bottom: 16px;
+    }
+
+    .otp-digits table {
+      border-collapse: separate;
+      border-spacing: 8px 0;
+      margin: 0 auto;
+    }
+
+    .otp-digit {
+      width: 52px;
+      height: 62px;
+      background: linear-gradient(180deg, #252545, #1a1a35);
+      border: 2px solid #9c27b0;
+      border-radius: 12px;
+      font-size: 28px;
+      font-weight: 800;
+      color: #FF6B35;
+      text-align: center;
+      vertical-align: middle;
+      letter-spacing: 0;
+      font-family: 'Courier New', monospace;
+    }
+
+    .otp-expiry {
+      font-size: 13px;
+      color: #7a7a9a;
+    }
+
+    .otp-expiry strong {
+      color: #FF6B35;
+    }
+
+    /* ── Security Warning ── */
+    .security-box {
+      background: linear-gradient(135deg, #1a1520, #201828);
+      border-left: 4px solid #FF6B35;
+      border-radius: 0 10px 10px 0;
+      padding: 18px 22px;
+      margin-bottom: 32px;
+    }
+
+    .security-box .security-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #FF6B35;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .security-box p {
+      font-size: 13px;
+      color: #b0b0c8;
+      line-height: 1.7;
+    }
+
+    .security-box strong {
+      color: #e0e0e0;
+    }
+
+    /* ── Features Section ── */
+    .features {
+      margin-bottom: 10px;
+    }
+
+    .features-title {
+      font-size: 16px;
+      color: #ffffff;
+      font-weight: 700;
+      margin-bottom: 18px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(156, 39, 176, 0.2);
+    }
+
+    .feature-row {
+      margin-bottom: 14px;
+    }
+
+    .feature-row table {
+      width: 100%;
+    }
+
+    .feature-icon-cell {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, rgba(156,39,176,0.15), rgba(255,107,53,0.1));
+      border-radius: 10px;
+      text-align: center;
+      vertical-align: middle;
+      font-size: 18px;
+    }
+
+    .feature-text-cell {
+      padding-left: 14px;
+      font-size: 14px;
+      color: #c0c0d8;
+      vertical-align: middle;
+      line-height: 1.5;
+    }
+
+    /* ── Footer ── */
+    .footer {
+      background: linear-gradient(180deg, #111122, #0d0d1a);
+      border-top: 1px solid rgba(156, 39, 176, 0.15);
+      padding: 28px 30px;
+      text-align: center;
+    }
+
+    .footer-brand {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .footer-brand .purple { color: #9c27b0; }
+    .footer-brand .orange { color: #FF6B35; }
+
+    .footer p {
+      font-size: 11px;
+      color: #555570;
+      line-height: 1.8;
+    }
+
+    .footer-divider {
+      width: 50px;
+      height: 2px;
+      background: linear-gradient(90deg, #9c27b0, #FF6B35);
+      margin: 12px auto;
+      border-radius: 2px;
+    }
+
+    .footer a {
+      color: #9c27b0;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+
+    <!-- ═══ Header ═══ -->
+    <div class="header">
+      <img src="https://res.cloudinary.com/dunkjkbjx/image/upload/v1776227164/sellora/branding/sellora_logo.jpg" alt="Sellora Logo" class="logo-img" />
+      <p class="header-tagline">Fashion & Lifestyle Marketplace</p>
+    </div>
+
+    <!-- ═══ Body ═══ -->
+    <div class="body">
+
+      <!-- Greeting -->
+      <p class="greeting">Hey <span><%= name %></span> 👋</p>
+      <p class="sub-text">
+        Welcome to <strong>Sellora</strong>! We're thrilled to have you join us.<br/>
+        You've registered as a <span class="role-badge"><%= role %></span><br/><br/>
+        To complete your registration, please verify your email using the OTP code below.
+      </p>
+
+      <!-- OTP Container -->
+      <div class="otp-container">
+        <p class="otp-label">🔐 Your Verification Code</p>
+        <div class="otp-digits">
+          <table>
+            <tr>
+              <% const otpStr = String(otp); %>
+              <% for(let i = 0; i < otpStr.length; i++) { %>
+                <td class="otp-digit"><%= otpStr[i] %></td>
+              <% } %>
+            </tr>
+          </table>
+        </div>
+        <p class="otp-expiry">⏱️ Expires in <strong>10 minutes</strong></p>
+      </div>
+
+      <!-- Security Warning -->
+      <div class="security-box">
+        <p class="security-title">🔒 Security Notice</p>
+        <p>
+          <strong>Never share this OTP</strong> with anyone. The Sellora team will
+          <strong>never</strong> ask you for your OTP or password via email or phone.
+          If you did not create this account, please ignore this email.
+        </p>
+      </div>
+
+      <!-- Features -->
+      <div class="features">
+        <p class="features-title">🎉 What awaits you on Sellora</p>
+
+        <div class="feature-row">
+          <table>
+            <tr>
+              <td class="feature-icon-cell">👗</td>
+              <td class="feature-text-cell">Discover thousands of trendy fashion & lifestyle products</td>
+            </tr>
+          </table>
+        </div>
+
+        <div class="feature-row">
+          <table>
+            <tr>
+              <td class="feature-icon-cell">💰</td>
+              <td class="feature-text-cell">Unbeatable prices with exclusive deals & discounts</td>
+            </tr>
+          </table>
+        </div>
+
+        <div class="feature-row">
+          <table>
+            <tr>
+              <td class="feature-icon-cell">🚚</td>
+              <td class="feature-text-cell">Lightning-fast delivery right to your doorstep</td>
+            </tr>
+          </table>
+        </div>
+
+        <div class="feature-row">
+          <table>
+            <tr>
+              <td class="feature-icon-cell">🔄</td>
+              <td class="feature-text-cell">Hassle-free returns & quick refund processing</td>
+            </tr>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ═══ Footer ═══ -->
+    <div class="footer">
+      <p class="footer-brand">
+        <span class="purple">Sell</span><span class="orange">ora</span>
+      </p>
+      <div class="footer-divider"></div>
+      <p>
+        This email was sent by Sellora.<br/>
+        Please do not reply to this email.<br/>
+        &copy; <%= new Date().getFullYear() %> Sellora. All rights reserved.
+      </p>
+    </div>
+
+  </div>
+</body>
+</html>
