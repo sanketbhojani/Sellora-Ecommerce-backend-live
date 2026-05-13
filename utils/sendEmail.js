@@ -13,24 +13,23 @@ const createTransporter = () => {
     const user = process.env.EMAIL_USER?.trim();
     const pass = process.env.EMAIL_PASS?.trim()?.replace(/\s/g, "");
 
+    console.log(`[Email] Creating transporter for ${user ? 'user: ' + user : 'MISSING USER'}`);
+
     if (!user || !pass) {
-        console.warn("⚠️ WARNING: EMAIL_USER or EMAIL_PASS is not defined in environment variables.");
+        console.warn("⚠️ WARNING: EMAIL_USER or EMAIL_PASS is not defined. Emails will fail.");
     }
 
+    // Using 'service: gmail' is the most reliable way for Gmail
     return nodemailer.createTransport({
-        host: "smtp.gmail.com",
-        port: 587,
-        secure: false, // use TLS
+        service: 'gmail',
         auth: {
             user: user,
             pass: pass,
         },
+        // Standard timeouts
         connectionTimeout: 10000,
         greetingTimeout: 10000,
         socketTimeout: 15000,
-        tls: {
-            rejectUnauthorized: false
-        }
     });
 }
 
