@@ -17,6 +17,7 @@ const getModelByRole = (role) => {
 const protect = async (req, res, next) => {
     try {
         let token;
+        const requestedRole = req.headers['x-role'];
 
         if (
             req.headers.authorization &&
@@ -25,7 +26,16 @@ const protect = async (req, res, next) => {
             token = req.headers.authorization.split(" ")[1];
         }
         else if (req.cookies) {
-            token = req.cookies.token || req.cookies.customerToken || req.cookies.sellerToken || req.cookies.adminToken;
+            if (requestedRole === 'admin') {
+                token = req.cookies.adminToken;
+            } else if (requestedRole === 'seller') {
+                token = req.cookies.sellerToken;
+            } else if (requestedRole === 'customer') {
+                token = req.cookies.customerToken;
+            } else {
+                // Default fallback if no x-role header
+                token = req.cookies.token || req.cookies.customerToken || req.cookies.sellerToken || req.cookies.adminToken;
+            }
         }
 
         if (!token) {
@@ -50,6 +60,15 @@ const protect = async (req, res, next) => {
 
         req.user = user;
         req.role = decoded.role;
+
+        // Strict role check: if x-role header is present, it MUST match the token role
+        if (requestedRole && requestedRole !== decoded.role) {
+            return res.status(401).json({
+                success: false,
+                message: `Not authorized. You are trying to access ${requestedRole} area with a ${decoded.role} account.`
+            });
+        }
+
         next();
 
     } catch (error) {

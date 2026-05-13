@@ -1,5 +1,5 @@
 import express from 'express'
-import { changePassword, forgotPassword, getMe, login, logout, registerAdmin, registerCustomer, registerSeller, resendOTP, resetPassword, verifyOTP } from '../controllers/authController.js';
+import { changePassword, forgotPassword, getMe, initiateManualVerification, login, logout, registerAdmin, registerCustomer, registerSeller, resendOTP, resetPassword, verifyOTP } from '../controllers/authController.js';
 import {  authorizeRoles, protect } from '../middlewares/authMiddleware.js';
 
 const router  = express.Router();
@@ -207,6 +207,7 @@ router.post('/verifyOTP',verifyOTP)
  *         description: No account found with this ID
  */
 router.post('/resendOTP',resendOTP)
+router.post('/initiateManualVerification', initiateManualVerification)
 
 /**
  * @swagger

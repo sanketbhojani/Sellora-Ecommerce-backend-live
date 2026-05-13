@@ -211,9 +211,14 @@ const registerAdmin = async (req, res) => {
         await newAdmin.save();
 
         // ✅ Await email
-        console.log("Calling sendOTPEmail for admin registration...");
-        const emailRes = await sendOTPEmail({ name, email, otp, role: "admin" });
-        console.log("sendOTPEmail call finished.");
+        console.log(`[Admin] Registering admin: ${email}. Triggering OTP email...`);
+        const emailRes = await sendOTPEmail({ name, email, otp, role: "Admin" });
+        
+        if (emailRes.success) {
+            console.log(`✅ [Admin] OTP email sent successfully to ${email}`);
+        } else {
+            console.error(`❌ [Admin] OTP email failed for ${email}:`, emailRes.error);
+        }
 
         return res.status(201).json({
             success: true,
@@ -227,7 +232,7 @@ const registerAdmin = async (req, res) => {
             },
             message: emailRes.success 
                 ? "Admin created successfully. OTP sent to email. Check your inbox."
-                : `Admin created, but OTP email failed: ${emailRes.error}. Please check your EMAIL_USER/PASS.`,
+                : `Admin created, but OTP email failed. Please check server logs or SMTP settings.`,
         });
 
     } catch (error) {
@@ -318,6 +323,8 @@ const verifyOTP = async (req, res) => {
                 phone: user.phone,
                 shopName: user.shopName,
                 isVerified: user.isVerified,
+                isSuperAdmin: user.isSuperAdmin,
+                permissions: user.permissions,
                 token,
             },
             message: "Email verified successfully! You can now login.",
@@ -430,6 +437,10 @@ const login = async (req, res) => {
             return res.status(403).json({
                 success: false,
                 message: "Please verify your email using OTP before logging in",
+                data: {
+                    userId: user._id,
+                    role: role
+                }
             });
         }
 
@@ -467,6 +478,8 @@ const login = async (req, res) => {
                 avatar: user.avatar,
                 phone: user.phone,
                 shopName: user.shopName,
+                isSuperAdmin: user.isSuperAdmin,
+                permissions: user.permissions,
                 token,
             },
             message: "Login successfully",
@@ -709,6 +722,59 @@ const logout = async (req, res) => {
     }
 };
 
+const initiateManualVerification = async (req, res) => {
+    try {
+        const { email, role = "customer" } = req.body;
+
+        if (!email) {
+            return res.status(400).json({
+                success: false,
+                message: "Please provide your email address",
+            });
+        }
+
+        const Model = getModelByRole(role);
+        const user = await Model.findOne({ email });
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "No account found with this email",
+            });
+        }
+
+        if (user.isVerified) {
+            return res.status(400).json({
+                success: false,
+                message: "Email is already verified. Please login.",
+            });
+        }
+
+        const { otp, otpExpiry } = generateOTP();
+        user.otp = otp;
+        user.otpExpiry = otpExpiry;
+        await user.save();
+
+        const emailRes = await sendOTPEmail({ name: user.name, email: user.email, otp, role });
+
+        return res.status(200).json({
+            success: true,
+            message: "A verification code has been sent to your email.",
+            data: {
+                userId: user._id,
+                role: role
+            },
+            ...((process.env.NODE_ENV !== 'production' || process.env.DEBUG_OTP === 'true') && { otp }),
+        });
+
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error.message,
+        });
+    }
+};
+
 export {
     registerCustomer,
     registerSeller,
@@ -721,4 +787,5 @@ export {
     resetPassword,
     getMe,
     logout,
+    initiateManualVerification
 };

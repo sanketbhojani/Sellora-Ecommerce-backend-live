@@ -22,6 +22,7 @@ app.use(cors({
         process.env.FRONTEND_URL, // Allow deployed frontend URL
     ].filter(Boolean),
     credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-role'],
 }));
 
 // ✅ Security middlewares

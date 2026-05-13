@@ -49,9 +49,11 @@ const sendOTPEmail = async ({ name, email, otp, role }) => {
     const pass = process.env.EMAIL_PASS?.trim();
 
     console.log(`[Email] Step 1: Initiating OTP email to ${email}`);
+    console.log(`[Email] Env Check: USER=${user ? 'SET' : 'MISSING'}, PASS=${pass ? 'SET' : 'MISSING'}`);
 
     try {
         if (!user || !pass) {
+            console.error("[Email] CRITICAL: SMTP credentials missing in .env!");
             throw new Error("Missing EMAIL_USER or EMAIL_PASS environment variables.");
         }
 
