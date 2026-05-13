@@ -78,12 +78,12 @@ const registerCustomer = async (req, res) => {
                 name: newCustomer.name,
                 email: newCustomer.email,
                 isVerified: newCustomer.isVerified,
-                // ✅ DEV ONLY: expose OTP so you can test via Swagger without checking email
-                ...((process.env.NODE_ENV !== 'production' || process.env.DEBUG_OTP === 'true') && { otp }),
+                // ✅ DEV/DEBUG ONLY: expose OTP if email fails or in debug mode
+                ...((process.env.NODE_ENV !== 'production' || process.env.DEBUG_OTP === 'true' || !emailRes.success) && { otp }),
             },
             message: emailRes.success 
                 ? "Customer registered successfully. OTP sent to email. Check your inbox."
-                : `Customer registered, but OTP email failed: ${emailRes.error}. Please check your EMAIL_USER/PASS.`,
+                : `Customer registered, but OTP email failed to send. Error: ${emailRes.error}. (Tip: If you are the developer, check the OTP in this response data).`,
         });
 
     } catch (error) {
@@ -151,12 +151,12 @@ const registerSeller = async (req, res) => {
                 shopName: newSeller.shopName,
                 isVerified: newSeller.isVerified,
                 isApproved: newSeller.isApproved,
-                // ✅ DEV ONLY: expose OTP so you can test via Swagger without checking email
-                ...((process.env.NODE_ENV !== 'production' || process.env.DEBUG_OTP === 'true') && { otp }),
+                // ✅ DEV/DEBUG ONLY: expose OTP if email fails or in debug mode
+                ...((process.env.NODE_ENV !== 'production' || process.env.DEBUG_OTP === 'true' || !emailRes.success) && { otp }),
             },
             message: emailRes.success 
                 ? "Seller registered successfully. OTP sent to email. Check your inbox."
-                : `Seller registered, but OTP email failed: ${emailRes.error}. Please check your EMAIL_USER/PASS.`,
+                : `Seller registered, but OTP email failed to send. Error: ${emailRes.error}. (Tip: If you are the developer, check the OTP in this response data).`,
         });
 
     } catch (error) {
@@ -227,12 +227,12 @@ const registerAdmin = async (req, res) => {
                 name: newAdmin.name,
                 email: newAdmin.email,
                 isVerified: newAdmin.isVerified,
-                // ✅ DEV ONLY: expose OTP so you can test via Swagger without checking email
-                ...((process.env.NODE_ENV !== 'production' || process.env.DEBUG_OTP === 'true') && { otp }),
+                // ✅ DEV/DEBUG ONLY: expose OTP if email fails or in debug mode
+                ...((process.env.NODE_ENV !== 'production' || process.env.DEBUG_OTP === 'true' || !emailRes.success) && { otp }),
             },
             message: emailRes.success 
                 ? "Admin created successfully. OTP sent to email. Check your inbox."
-                : `Admin created, but OTP email failed. Please check server logs or SMTP settings.`,
+                : `Admin created, but OTP email failed to send. Error: ${emailRes.error}. (Tip: If you are the developer, check the OTP in this response data).`,
         });
 
     } catch (error) {
