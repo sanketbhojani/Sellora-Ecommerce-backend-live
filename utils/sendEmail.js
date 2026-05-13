@@ -10,43 +10,56 @@ import env from 'dotenv'
 env.config();
 
 const createTransporter = () => {
+    const user = process.env.EMAIL_USER?.trim();
+    const pass = process.env.EMAIL_PASS?.trim()?.replace(/\s/g, "");
+
+    if (!user || !pass) {
+        console.warn("⚠️ WARNING: EMAIL_USER or EMAIL_PASS is not defined in environment variables.");
+    }
+
     return nodemailer.createTransport({
         host: "smtp.gmail.com",
-        port: 465,
-        secure: true, // use SSL
+        port: 587,
+        secure: false, // use TLS
         auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS?.replace(/\s/g, ""), // Strip spaces for reliability
+            user: user,
+            pass: pass,
         },
-        // ✅ Timeout so it never hangs indefinitely
         connectionTimeout: 10000,
         greetingTimeout: 10000,
         socketTimeout: 15000,
+        tls: {
+            rejectUnauthorized: false
+        }
     });
 }
 
-const sendOTPEmail = async ({ name, email, otp, role }) => {
-    console.log(`Starting sendOTPEmail to: ${email}`);
-    try {
-        console.log("Environment check:", {
-            user: process.env.EMAIL_USER ? "set" : "MISSING",
-            pass: process.env.EMAIL_PASS ? "set" : "MISSING"
-        });
-        const templatePath = path.join(
-            __dirname,
-            "../views/emails/otpEmail.ejs"
-        );
+import fs from 'fs';
 
-        const htmlContent = await ejs.renderFile(templatePath, {
-            name,
-            otp,
-            role
-        });
+const sendOTPEmail = async ({ name, email, otp, role }) => {
+    const user = process.env.EMAIL_USER?.trim();
+    const pass = process.env.EMAIL_PASS?.trim();
+
+    console.log(`[Email] Step 1: Initiating OTP email to ${email}`);
+
+    try {
+        if (!user || !pass) {
+            throw new Error("Missing EMAIL_USER or EMAIL_PASS environment variables.");
+        }
+
+        const templatePath = path.join(__dirname, "../views/emails/otpEmail.ejs");
+        
+        if (!fs.existsSync(templatePath)) {
+            console.error(`[Email] CRITICAL: Template not found at ${templatePath}`);
+            throw new Error("Email template file missing.");
+        }
+
+        console.log(`[Email] Step 2: Rendering template from ${templatePath}`);
+        const htmlContent = await ejs.renderFile(templatePath, { name, otp, role });
 
         const transporter = createTransporter();
-
         const mailOptions = {
-            from: `"Sellora" <${process.env.EMAIL_USER}>`,
+            from: `"Sellora" <${user}>`,
             to: email,
             subject: role?.toLowerCase() === "admin" 
                 ? "🔐 Sellora Admin Panel - OTP Verification" 
@@ -54,14 +67,9 @@ const sendOTPEmail = async ({ name, email, otp, role }) => {
             html: htmlContent,
         };
 
-        console.log("Mail options prepared:", {
-            to: mailOptions.to,
-            subject: mailOptions.subject
-        });
-
-        console.log("Attempting to send email...");
+        console.log(`[Email] Step 3: Sending mail via smtp.gmail.com:587...`);
         await transporter.sendMail(mailOptions);
-        console.log(`✅ Success: OTP email sent to: ${email}`);
+        console.log(`✅ Success: OTP email sent to ${email}`);
 
     } catch (error) {
         // ✅ Log but NEVER throw — email failure must not block the API response
@@ -74,29 +82,37 @@ const sendOTPEmail = async ({ name, email, otp, role }) => {
 };
 
 const sendPasswordResetEmail = async ({ name, email, otp, role }) => {
-    try {
-        const templatePath = path.join(
-            __dirname,
-            "../views/emails/resetPasswordEmail.ejs"
-        );
+    const user = process.env.EMAIL_USER?.trim();
+    const pass = process.env.EMAIL_PASS?.trim();
 
-        const htmlContent = await ejs.renderFile(templatePath, {
-            name,
-            otp,
-            role
-        });
+    console.log(`[Email] Step 1: Initiating Password Reset email to ${email}`);
+    
+    try {
+        if (!user || !pass) {
+            throw new Error("Missing EMAIL_USER or EMAIL_PASS environment variables.");
+        }
+
+        const templatePath = path.join(__dirname, "../views/emails/resetPasswordEmail.ejs");
+        
+        if (!fs.existsSync(templatePath)) {
+            console.error(`[Email] CRITICAL: Template not found at ${templatePath}`);
+            throw new Error("Email template file missing.");
+        }
+
+        console.log(`[Email] Step 2: Rendering template from ${templatePath}`);
+        const htmlContent = await ejs.renderFile(templatePath, { name, otp, role });
 
         const transporter = createTransporter();
-
         const mailOptions = {
-            from: `"Sellora Security" <${process.env.EMAIL_USER}>`,
+            from: `"Sellora Security" <${user}>`,
             to: email,
             subject: "🔒 Password Reset Request - Sellora",
             html: htmlContent,
         }
 
+        console.log(`[Email] Step 3: Sending mail via smtp.gmail.com:587...`);
         await transporter.sendMail(mailOptions);
-        console.log(`Password reset email sent to: ${email}`);
+        console.log(`✅ Success: Password reset email sent to ${email}`);
 
     } catch (error) {
         // ✅ Log but NEVER throw — email failure must not block the API response

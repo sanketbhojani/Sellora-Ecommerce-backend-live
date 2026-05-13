@@ -79,7 +79,7 @@ const registerCustomer = async (req, res) => {
                 email: newCustomer.email,
                 isVerified: newCustomer.isVerified,
                 // ✅ DEV ONLY: expose OTP so you can test via Swagger without checking email
-                ...(process.env.NODE_ENV !== 'production' && { otp }),
+                ...((process.env.NODE_ENV !== 'production' || process.env.DEBUG_OTP === 'true') && { otp }),
             },
             message: "Customer registered successfully. OTP sent to email. Use the OTP from 'data.otp' (dev only) or check your inbox.",
         });
@@ -150,7 +150,7 @@ const registerSeller = async (req, res) => {
                 isVerified: newSeller.isVerified,
                 isApproved: newSeller.isApproved,
                 // ✅ DEV ONLY: expose OTP so you can test via Swagger without checking email
-                ...(process.env.NODE_ENV !== 'production' && { otp }),
+                ...((process.env.NODE_ENV !== 'production' || process.env.DEBUG_OTP === 'true') && { otp }),
             },
             message: "Seller registered successfully. OTP sent to email. Use the OTP from 'data.otp' (dev only) or check your inbox.",
         });
@@ -219,7 +219,7 @@ const registerAdmin = async (req, res) => {
                 email: newAdmin.email,
                 isVerified: newAdmin.isVerified,
                 // ✅ DEV ONLY: expose OTP so you can test via Swagger without checking email
-                ...(process.env.NODE_ENV !== 'production' && { otp }),
+                ...((process.env.NODE_ENV !== 'production' || process.env.DEBUG_OTP === 'true') && { otp }),
             },
             message: "Admin created successfully. OTP sent to email. Use the OTP from 'data.otp' (dev only) or check your inbox.",
         });
@@ -371,14 +371,13 @@ const resendOTP = async (req, res) => {
         user.otpExpiry = otpExpiry;
         await user.save();
 
-        // ✅ Fire-and-forget
-        sendOTPEmail({ name: user.name, email: user.email, otp, role }).catch((err) =>
-            console.error("Resend OTP email error:", err.message)
-        );
+        // ✅ Await email
+        await sendOTPEmail({ name: user.name, email: user.email, otp, role });
 
         return res.status(200).json({
             success: true,
             message: "A new OTP has been sent to your email.",
+            ...((process.env.NODE_ENV !== 'production' || process.env.DEBUG_OTP === 'true') && { otp }),
         });
 
     } catch (error) {
@@ -562,14 +561,13 @@ const forgotPassword = async (req, res) => {
         user.otpExpiry = otpExpiry;
         await user.save();
 
-        // ✅ Fire-and-forget
-        sendPasswordResetEmail({ name: user.name, email: user.email, otp, role }).catch((err) =>
-            console.error("Password reset email error:", err.message)
-        );
+        // ✅ Await email
+        await sendPasswordResetEmail({ name: user.name, email: user.email, otp, role });
 
         return res.status(200).json({
             success: true,
             message: "A password reset code has been sent to your email.",
+            ...((process.env.NODE_ENV !== 'production' || process.env.DEBUG_OTP === 'true') && { otp }),
         });
 
     } catch (error) {
