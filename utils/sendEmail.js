@@ -9,6 +9,13 @@ import ejs from 'ejs'
 import env from 'dotenv'
 env.config();
 
+import dns from 'dns';
+// ✅ Force Node to prefer IPv4 over IPv6. 
+// This fixes the ENETUNREACH error on Render where IPv6 is unreachable.
+if (dns.setDefaultResultOrder) {
+    dns.setDefaultResultOrder('ipv4first');
+}
+
 const createTransporter = () => {
     const user = process.env.EMAIL_USER?.trim();
     const pass = process.env.EMAIL_PASS?.trim()?.replace(/\s/g, "");
