@@ -68,7 +68,7 @@ const registerCustomer = async (req, res) => {
 
         // ✅ Await email for better debugging
         console.log("Calling sendOTPEmail for customer registration...");
-        await sendOTPEmail({ name, email, otp, role: "Customer" });
+        const emailRes = await sendOTPEmail({ name, email, otp, role: "Customer" });
         console.log("sendOTPEmail call finished.");
 
         return res.status(201).json({
@@ -81,7 +81,9 @@ const registerCustomer = async (req, res) => {
                 // ✅ DEV ONLY: expose OTP so you can test via Swagger without checking email
                 ...((process.env.NODE_ENV !== 'production' || process.env.DEBUG_OTP === 'true') && { otp }),
             },
-            message: "Customer registered successfully. OTP sent to email. Use the OTP from 'data.otp' (dev only) or check your inbox.",
+            message: emailRes.success 
+                ? "Customer registered successfully. OTP sent to email. Check your inbox."
+                : `Customer registered, but OTP email failed: ${emailRes.error}. Please check your EMAIL_USER/PASS.`,
         });
 
     } catch (error) {
@@ -138,7 +140,7 @@ const registerSeller = async (req, res) => {
 
         // ✅ Await email
         console.log("Calling sendOTPEmail for seller registration...");
-        await sendOTPEmail({ name, email, otp, role: "Seller" });
+        const emailRes = await sendOTPEmail({ name, email, otp, role: "Seller" });
 
         return res.status(201).json({
             success: true,
@@ -152,7 +154,9 @@ const registerSeller = async (req, res) => {
                 // ✅ DEV ONLY: expose OTP so you can test via Swagger without checking email
                 ...((process.env.NODE_ENV !== 'production' || process.env.DEBUG_OTP === 'true') && { otp }),
             },
-            message: "Seller registered successfully. OTP sent to email. Use the OTP from 'data.otp' (dev only) or check your inbox.",
+            message: emailRes.success 
+                ? "Seller registered successfully. OTP sent to email. Check your inbox."
+                : `Seller registered, but OTP email failed: ${emailRes.error}. Please check your EMAIL_USER/PASS.`,
         });
 
     } catch (error) {
@@ -208,7 +212,7 @@ const registerAdmin = async (req, res) => {
 
         // ✅ Await email
         console.log("Calling sendOTPEmail for admin registration...");
-        await sendOTPEmail({ name, email, otp, role: "admin" });
+        const emailRes = await sendOTPEmail({ name, email, otp, role: "admin" });
         console.log("sendOTPEmail call finished.");
 
         return res.status(201).json({
@@ -221,7 +225,9 @@ const registerAdmin = async (req, res) => {
                 // ✅ DEV ONLY: expose OTP so you can test via Swagger without checking email
                 ...((process.env.NODE_ENV !== 'production' || process.env.DEBUG_OTP === 'true') && { otp }),
             },
-            message: "Admin created successfully. OTP sent to email. Use the OTP from 'data.otp' (dev only) or check your inbox.",
+            message: emailRes.success 
+                ? "Admin created successfully. OTP sent to email. Check your inbox."
+                : `Admin created, but OTP email failed: ${emailRes.error}. Please check your EMAIL_USER/PASS.`,
         });
 
     } catch (error) {
@@ -372,11 +378,13 @@ const resendOTP = async (req, res) => {
         await user.save();
 
         // ✅ Await email
-        await sendOTPEmail({ name: user.name, email: user.email, otp, role });
+        const emailRes = await sendOTPEmail({ name: user.name, email: user.email, otp, role });
 
         return res.status(200).json({
             success: true,
-            message: "A new OTP has been sent to your email.",
+            message: emailRes.success 
+                ? "A new OTP has been sent to your email."
+                : `Failed to send OTP: ${emailRes.error}. Please check your EMAIL_USER/PASS.`,
             ...((process.env.NODE_ENV !== 'production' || process.env.DEBUG_OTP === 'true') && { otp }),
         });
 
@@ -562,11 +570,13 @@ const forgotPassword = async (req, res) => {
         await user.save();
 
         // ✅ Await email
-        await sendPasswordResetEmail({ name: user.name, email: user.email, otp, role });
+        const emailRes = await sendPasswordResetEmail({ name: user.name, email: user.email, otp, role });
 
         return res.status(200).json({
             success: true,
-            message: "A password reset code has been sent to your email.",
+            message: emailRes.success 
+                ? "A password reset code has been sent to your email."
+                : `Failed to send reset email: ${emailRes.error}. Please check your EMAIL_USER/PASS.`,
             ...((process.env.NODE_ENV !== 'production' || process.env.DEBUG_OTP === 'true') && { otp }),
         });
 

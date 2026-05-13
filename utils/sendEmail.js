@@ -69,15 +69,13 @@ const sendOTPEmail = async ({ name, email, otp, role }) => {
         console.log(`[Email] Step 3: Sending mail via smtp.gmail.com:587...`);
         await transporter.sendMail(mailOptions);
         console.log(`✅ Success: OTP email sent to ${email}`);
+        return { success: true };
 
     } catch (error) {
-        // ✅ Log but NEVER throw — email failure must not block the API response
         console.error("❌ OTP Email sending failed:", error.message);
         console.error("   Error code:", error.code);
-        console.error("   Recipient:", email);
-        console.error("   Full error:", error);
+        return { success: false, error: error.message };
     }
-
 };
 
 const sendPasswordResetEmail = async ({ name, email, otp, role }) => {
@@ -112,13 +110,12 @@ const sendPasswordResetEmail = async ({ name, email, otp, role }) => {
         console.log(`[Email] Step 3: Sending mail via smtp.gmail.com:587...`);
         await transporter.sendMail(mailOptions);
         console.log(`✅ Success: Password reset email sent to ${email}`);
+        return { success: true };
 
     } catch (error) {
-        // ✅ Log but NEVER throw — email failure must not block the API response
         console.error("❌ Password reset email sending failed:", error.message);
         console.error("   Error code:", error.code);
-        console.error("   Recipient:", email);
-        console.error("   Full error:", error);
+        return { success: false, error: error.message };
     }
 };
 
