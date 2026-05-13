@@ -19,14 +19,16 @@ const createTransporter = () => {
         console.warn("⚠️ WARNING: EMAIL_USER or EMAIL_PASS is not defined. Emails will fail.");
     }
 
-    // Using 'service: gmail' is the most reliable way for Gmail
+    // Force IPv4 (family: 4) to fix ENETUNREACH errors on Render/IPv6 environments
     return nodemailer.createTransport({
-        service: 'gmail',
+        host: "smtp.gmail.com",
+        port: 587,
+        secure: false, // use STARTTLS
         auth: {
             user: user,
             pass: pass,
         },
-        // Standard timeouts
+        family: 4, // <--- CRITICAL FIX FOR ENETUNREACH
         connectionTimeout: 10000,
         greetingTimeout: 10000,
         socketTimeout: 15000,
