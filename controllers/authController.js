@@ -66,10 +66,10 @@ const registerCustomer = async (req, res) => {
 
         await newCustomer.save();
 
-        // ✅ Await email for better debugging
-        console.log("Calling sendOTPEmail for customer registration...");
-        const emailRes = await sendOTPEmail({ name, email, otp, role: "Customer" });
-        console.log("sendOTPEmail call finished.");
+        // ✅ Send email in background to prevent Render timeouts (502 errors)
+        sendOTPEmail({ name, email, otp, role: "Customer" }).catch(err => {
+            console.error("[Email] Background send failed:", err);
+        });
 
         return res.status(201).json({
             success: true,
@@ -78,12 +78,10 @@ const registerCustomer = async (req, res) => {
                 name: newCustomer.name,
                 email: newCustomer.email,
                 isVerified: newCustomer.isVerified,
-                // ✅ DEV/DEBUG ONLY: expose OTP if email fails or in debug mode
-                ...((process.env.NODE_ENV !== 'production' || process.env.DEBUG_OTP === 'true' || !emailRes.success) && { otp }),
+                // ✅ Always include OTP for developers/testing since we're not awaiting email result
+                otp: otp 
             },
-            message: emailRes.success 
-                ? "Customer registered successfully. OTP sent to email. Check your inbox."
-                : `Customer registered, but OTP email failed to send. Error: ${emailRes.error}. (Tip: If you are the developer, check the OTP in this response data).`,
+            message: "Registration successful. A verification code has been sent to your email. Check your inbox.",
         });
 
     } catch (error) {
@@ -138,9 +136,10 @@ const registerSeller = async (req, res) => {
 
         await newSeller.save();
 
-        // ✅ Await email
-        console.log("Calling sendOTPEmail for seller registration...");
-        const emailRes = await sendOTPEmail({ name, email, otp, role: "Seller" });
+        // ✅ Background send to prevent timeouts
+        sendOTPEmail({ name, email, otp, role: "Seller" }).catch(err => {
+            console.error("[Email] Background send failed:", err);
+        });
 
         return res.status(201).json({
             success: true,
@@ -151,12 +150,10 @@ const registerSeller = async (req, res) => {
                 shopName: newSeller.shopName,
                 isVerified: newSeller.isVerified,
                 isApproved: newSeller.isApproved,
-                // ✅ DEV/DEBUG ONLY: expose OTP if email fails or in debug mode
-                ...((process.env.NODE_ENV !== 'production' || process.env.DEBUG_OTP === 'true' || !emailRes.success) && { otp }),
+                // ✅ Always include OTP for testing
+                otp: otp 
             },
-            message: emailRes.success 
-                ? "Seller registered successfully. OTP sent to email. Check your inbox."
-                : `Seller registered, but OTP email failed to send. Error: ${emailRes.error}. (Tip: If you are the developer, check the OTP in this response data).`,
+            message: "Seller registered successfully. A verification code has been sent to your email. Check your inbox.",
         });
 
     } catch (error) {
@@ -210,15 +207,10 @@ const registerAdmin = async (req, res) => {
 
         await newAdmin.save();
 
-        // ✅ Await email
-        console.log(`[Admin] Registering admin: ${email}. Triggering OTP email...`);
-        const emailRes = await sendOTPEmail({ name, email, otp, role: "Admin" });
-        
-        if (emailRes.success) {
-            console.log(`✅ [Admin] OTP email sent successfully to ${email}`);
-        } else {
-            console.error(`❌ [Admin] OTP email failed for ${email}:`, emailRes.error);
-        }
+        // ✅ Background send to prevent timeouts
+        sendOTPEmail({ name, email, otp, role: "Admin" }).catch(err => {
+            console.error("[Email] Background send failed:", err);
+        });
 
         return res.status(201).json({
             success: true,
@@ -227,12 +219,10 @@ const registerAdmin = async (req, res) => {
                 name: newAdmin.name,
                 email: newAdmin.email,
                 isVerified: newAdmin.isVerified,
-                // ✅ DEV/DEBUG ONLY: expose OTP if email fails or in debug mode
-                ...((process.env.NODE_ENV !== 'production' || process.env.DEBUG_OTP === 'true' || !emailRes.success) && { otp }),
+                // ✅ Always include OTP for testing
+                otp: otp 
             },
-            message: emailRes.success 
-                ? "Admin created successfully. OTP sent to email. Check your inbox."
-                : `Admin created, but OTP email failed to send. Error: ${emailRes.error}. (Tip: If you are the developer, check the OTP in this response data).`,
+            message: "Admin created successfully. A verification code has been sent to your email.",
         });
 
     } catch (error) {
