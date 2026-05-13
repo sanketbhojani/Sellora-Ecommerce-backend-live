@@ -48,7 +48,7 @@ const sendOTPEmail = async ({ name, email, otp, role }) => {
         const mailOptions = {
             from: `"Sellora" <${process.env.EMAIL_USER}>`,
             to: email,
-            subject: role === "Admin" 
+            subject: role?.toLowerCase() === "admin" 
                 ? "🔐 Sellora Admin Panel - OTP Verification" 
                 : "🛍️ Welcome to Sellora! Your OTP Verification Code",
             html: htmlContent,

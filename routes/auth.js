@@ -109,7 +109,7 @@ router.post('/register/registerSeller',registerSeller)
  *         application/json:
  *           schema:
  *             type: object
- *             required: [name, email, password, confirmPassword]
+ *             required: [name, email, password, confirmPassword, phone]
  *             properties:
  *               name:
  *                 type: string

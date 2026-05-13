@@ -7,10 +7,11 @@ env.config();
 
 
 const getModelByRole = (role) => {
-    if (role === "seller") return Seller
-    if (role === "admin") return Admin
-    return Customer
-}
+    const r = role?.toLowerCase();
+    if (r === "seller") return Seller;
+    if (r === "admin") return Admin;
+    return Customer;
+};
 
 // protect :- login or not check 
 const protect = async (req, res, next) => {

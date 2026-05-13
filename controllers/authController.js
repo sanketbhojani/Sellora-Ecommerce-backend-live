@@ -11,14 +11,16 @@ import mongoose from "mongoose";
 // ─── Helper ───────────────────────────────────────────────────
 
 const getModelByRole = (role) => {
-    if (role === "seller") return Seller;
-    if (role === "admin") return Admin;
+    const r = role?.toLowerCase();
+    if (r === "seller") return Seller;
+    if (r === "admin") return Admin;
     return Customer;
 };
 
 const getCookieNameByRole = (role) => {
-    if (role === "seller") return "sellerToken";
-    if (role === "admin") return "adminToken";
+    const r = role?.toLowerCase();
+    if (r === "seller") return "sellerToken";
+    if (r === "admin") return "adminToken";
     return "customerToken";
 };
 
@@ -167,10 +169,10 @@ const registerAdmin = async (req, res) => {
     try {
         const { name, email, password, confirmPassword, phone, isSuperAdmin } = req.body;
 
-        if (!name || !email || !password || !confirmPassword) {
+        if (!name || !email || !password || !confirmPassword || !phone) {
             return res.status(400).json({
                 success: false,
-                message: "Please provide name, email, password and confirm password",
+                message: "Please provide name, email, password, confirm password and phone",
             });
         }
 
@@ -206,7 +208,8 @@ const registerAdmin = async (req, res) => {
 
         // ✅ Await email
         console.log("Calling sendOTPEmail for admin registration...");
-        await sendOTPEmail({ name, email, otp, role: "Admin" });
+        await sendOTPEmail({ name, email, otp, role: "admin" });
+        console.log("sendOTPEmail call finished.");
 
         return res.status(201).json({
             success: true,

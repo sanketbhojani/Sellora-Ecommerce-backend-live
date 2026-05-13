@@ -69,7 +69,7 @@ router.get("/getDashboardStats", getDashboardStats);
  *       200:
  *         description: User activated
  */
-router.post("/activateUser/:id",activateUser)
+router.post("/activateUser/:id", activateUser)
 
 /**
  * @swagger
@@ -90,7 +90,7 @@ router.post("/activateUser/:id",activateUser)
  *       200:
  *         description: User deactivated
  */
-router.post("/deactivateUser/:id",deactivateUser)
+router.post("/deactivateUser/:id", deactivateUser)
 
 /**
  * @swagger
@@ -392,7 +392,7 @@ router.get("/admins", getAllAdmins);
  *         application/json:
  *           schema:
  *             type: object
- *             required: [name, email, password, confirmPassword]
+ *             required: [name, email, password, confirmPassword, phone]
  *             properties:
  *               name:
  *                 type: string
