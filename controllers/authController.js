@@ -8,7 +8,7 @@ import { sendOTPEmail, sendPasswordResetEmail } from "../utils/sendEmail.js";
 import generateToken from "../utils/generateToken.js";
 import mongoose from "mongoose";
 
-// ─── Helper ───────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────
 
 const getModelByRole = (role) => {
     const r = role?.toLowerCase();
@@ -24,8 +24,6 @@ const getCookieNameByRole = (role) => {
     return "customerToken";
 };
 
-// ─── Universal User Finder ────────────────────────────────────
-// Detects user across all collections (Customer, Seller, Admin)
 const findUserAcrossRoles = async ({ userId, email }) => {
     const roles = ["customer", "seller", "admin"];
     for (const role of roles) {
@@ -36,7 +34,6 @@ const findUserAcrossRoles = async ({ userId, email }) => {
         } else if (email) {
             user = await Model.findOne({ email }).select("+otp +otpExpiry +password");
         }
-        
         if (user) return { user, role };
     }
     return { user: null, role: null };
@@ -49,46 +46,26 @@ const registerCustomer = async (req, res) => {
         const { name, email, password, confirmPassword, phone } = req.body;
 
         if (!name || !email || !password || !confirmPassword || !phone) {
-            return res.status(400).json({
-                success: false,
-                message: "All fields required",
-            });
+            return res.status(400).json({ success: false, message: "All fields required" });
         }
-
         if (password !== confirmPassword) {
-            return res.status(400).json({
-                success: false,
-                message: "Password and confirm password do not match",
-            });
+            return res.status(400).json({ success: false, message: "Password and confirm password do not match" });
         }
-
         const exists = await Customer.findOne({ email });
         if (exists) {
-            return res.status(400).json({
-                success: false,
-                message: "User already exists",
-            });
+            return res.status(400).json({ success: false, message: "User already exists" });
         }
 
         const { otp, otpExpiry } = generateOTP();
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        const newCustomer = new Customer({
-            name,
-            email,
-            password: hashedPassword,
-            phone,
-            otp,
-            otpExpiry,
-        });
+        const newCustomer = new Customer({ name, email, password: hashedPassword, phone, otp, otpExpiry });
+        await newCustomer.save(); // ✅ Save first
 
-        // ✅ Save user first to ensure they are registered
-        await newCustomer.save();
-
-        // ✅ Send email in background to prevent Render timeouts (502 errors)
-        sendOTPEmail({ name, email, otp, role: "Customer" }).catch(err => {
-            console.error("[Email] Background send failed during registration:", err);
-        });
+        // ✅ Email in background — never blocks response
+        sendOTPEmail({ name, email, otp, role: "Customer" }).catch(err =>
+            console.error("[Email] registerCustomer failed:", err.message)
+        );
 
         return res.status(201).json({
             success: true,
@@ -97,16 +74,13 @@ const registerCustomer = async (req, res) => {
                 name: newCustomer.name,
                 email: newCustomer.email,
                 isVerified: newCustomer.isVerified,
-                otp: otp 
+                otp, // DEV only
             },
-            message: "Registration successful. A verification code has been sent to your email. You can also use the OTP provided below.",
+            message: "Registration successful. A verification code has been sent to your email.",
         });
 
     } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: error.message,
-        });
+        return res.status(500).json({ success: false, message: error.message });
     }
 };
 
@@ -117,48 +91,26 @@ const registerSeller = async (req, res) => {
         const { name, email, password, confirmPassword, phone, shopName, shopDescription } = req.body;
 
         if (!name || !email || !password || !confirmPassword || !phone || !shopName) {
-            return res.status(400).json({
-                success: false,
-                message: "Please provide name, email, password, confirm password, phone and shop name",
-            });
+            return res.status(400).json({ success: false, message: "Please provide name, email, password, confirm password, phone and shop name" });
         }
-
         if (password !== confirmPassword) {
-            return res.status(400).json({
-                success: false,
-                message: "Password and confirm password do not match",
-            });
+            return res.status(400).json({ success: false, message: "Password and confirm password do not match" });
         }
-
         const exists = await Seller.findOne({ email });
         if (exists) {
-            return res.status(400).json({
-                success: false,
-                message: "Seller already exists",
-            });
+            return res.status(400).json({ success: false, message: "Seller already exists" });
         }
 
         const { otp, otpExpiry } = generateOTP();
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        const newSeller = new Seller({
-            name,
-            email,
-            password: hashedPassword,
-            phone,
-            shopName,
-            shopDescription,
-            otp,
-            otpExpiry,
-        });
+        const newSeller = new Seller({ name, email, password: hashedPassword, phone, shopName, shopDescription, otp, otpExpiry });
+        await newSeller.save(); // ✅ Save first
 
-        // ✅ Save seller first
-        await newSeller.save();
-
-        // ✅ Send email in background
-        sendOTPEmail({ name, email, otp, role: "Seller" }).catch(err => {
-            console.error("[Email] Seller background send failed:", err);
-        });
+        // ✅ Email in background
+        sendOTPEmail({ name, email, otp, role: "Seller" }).catch(err =>
+            console.error("[Email] registerSeller failed:", err.message)
+        );
 
         return res.status(201).json({
             success: true,
@@ -169,16 +121,13 @@ const registerSeller = async (req, res) => {
                 shopName: newSeller.shopName,
                 isVerified: newSeller.isVerified,
                 isApproved: newSeller.isApproved,
-                otp: otp 
+                otp, // DEV only
             },
-            message: "Seller registered successfully. Check your email for verification code.",
+            message: "Seller registered successfully. A verification code has been sent to your email.",
         });
 
     } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: error.message,
-        });
+        return res.status(500).json({ success: false, message: error.message });
     }
 };
 
@@ -189,47 +138,26 @@ const registerAdmin = async (req, res) => {
         const { name, email, password, confirmPassword, phone, isSuperAdmin } = req.body;
 
         if (!name || !email || !password || !confirmPassword || !phone) {
-            return res.status(400).json({
-                success: false,
-                message: "Please provide name, email, password, confirm password and phone",
-            });
+            return res.status(400).json({ success: false, message: "Please provide name, email, password, confirm password and phone" });
         }
-
         if (password !== confirmPassword) {
-            return res.status(400).json({
-                success: false,
-                message: "Password and confirm password do not match",
-            });
+            return res.status(400).json({ success: false, message: "Password and confirm password do not match" });
         }
-
         const exists = await Admin.findOne({ email });
         if (exists) {
-            return res.status(400).json({
-                success: false,
-                message: "Email already registered as admin",
-            });
+            return res.status(400).json({ success: false, message: "Email already registered as admin" });
         }
 
         const { otp, otpExpiry } = generateOTP();
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        const newAdmin = new Admin({
-            name,
-            email,
-            password: hashedPassword,
-            phone,
-            isSuperAdmin: isSuperAdmin || false,
-            otp,
-            otpExpiry,
-        });
+        const newAdmin = new Admin({ name, email, password: hashedPassword, phone, isSuperAdmin: isSuperAdmin || false, otp, otpExpiry });
+        await newAdmin.save(); // ✅ Save first
 
-        // ✅ Save admin first
-        await newAdmin.save();
-
-        // ✅ Send email in background
-        sendOTPEmail({ name, email, otp, role: "Admin" }).catch(err => {
-            console.error("[Email] Admin background send failed:", err);
-        });
+        // ✅ Email in background
+        sendOTPEmail({ name, email, otp, role: "Admin" }).catch(err =>
+            console.error("[Email] registerAdmin failed:", err.message)
+        );
 
         return res.status(201).json({
             success: true,
@@ -238,16 +166,13 @@ const registerAdmin = async (req, res) => {
                 name: newAdmin.name,
                 email: newAdmin.email,
                 isVerified: newAdmin.isVerified,
-                otp: otp 
+                otp, // DEV only
             },
-            message: "Admin created successfully. Verification code sent to email.",
+            message: "Admin created successfully. A verification code has been sent to your email.",
         });
 
     } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: error.message,
-        });
+        return res.status(500).json({ success: false, message: error.message });
     }
 };
 
@@ -257,54 +182,26 @@ const verifyOTP = async (req, res) => {
     try {
         const { userId, otp, role = "customer" } = req.body;
 
-        // ✅ Validate required fields
         if (!userId || !otp) {
-            return res.status(400).json({
-                success: false,
-                message: "Please provide user ID and OTP",
-            });
+            return res.status(400).json({ success: false, message: "Please provide user ID and OTP" });
         }
-
-        // ✅ Validate ObjectId
         if (!mongoose.Types.ObjectId.isValid(userId)) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid user ID",
-            });
+            return res.status(400).json({ success: false, message: "Invalid user ID" });
         }
 
-        // ✅ Find user across all collections automatically if specific role search fails
         let { user, role: detectedRole } = await findUserAcrossRoles({ userId });
 
         if (!user) {
-            return res.status(404).json({
-                success: false,
-                message: "No account found with this ID",
-            });
+            return res.status(404).json({ success: false, message: "No account found with this ID" });
         }
-
-        // Use detected role for token generation
-        const actualRole = detectedRole;
-
         if (user.isVerified) {
-            return res.status(400).json({
-                success: false,
-                message: "Email is already verified",
-            });
+            return res.status(400).json({ success: false, message: "Email is already verified" });
         }
-
         if (String(otp) !== String(user.otp)) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid OTP. Please check your email.",
-            });
+            return res.status(400).json({ success: false, message: "Invalid OTP. Please check your email." });
         }
-
         if (user.otpExpiry < new Date()) {
-            return res.status(400).json({
-                success: false,
-                message: "OTP has expired. Please request a new one.",
-            });
+            return res.status(400).json({ success: false, message: "OTP has expired. Please request a new one." });
         }
 
         user.isVerified = true;
@@ -312,14 +209,9 @@ const verifyOTP = async (req, res) => {
         user.otpExpiry = null;
         await user.save();
 
-        const token = generateToken(user._id, role);
-
-        const cookieName = getCookieNameByRole(role);
-        res.cookie(cookieName, token, {
-            httpOnly: true,
-            sameSite: "strict",
-            maxAge: 30 * 24 * 60 * 60 * 1000,
-        });
+        const token = generateToken(user._id, detectedRole);
+        const cookieName = getCookieNameByRole(detectedRole);
+        res.cookie(cookieName, token, { httpOnly: true, sameSite: "strict", maxAge: 30 * 24 * 60 * 60 * 1000 });
 
         return res.status(200).json({
             success: true,
@@ -340,10 +232,7 @@ const verifyOTP = async (req, res) => {
         });
 
     } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: error.message,
-        });
+        return res.status(500).json({ success: false, message: error.message });
     }
 };
 
@@ -351,69 +240,45 @@ const verifyOTP = async (req, res) => {
 
 const resendOTP = async (req, res) => {
     try {
-        const { userId, role = "customer" } = req.body;
+        const { userId } = req.body;
 
-        // ✅ Validate required fields
         if (!userId) {
-            return res.status(400).json({
-                success: false,
-                message: "Please provide user ID",
-            });
+            return res.status(400).json({ success: false, message: "Please provide user ID" });
         }
-
-        // ✅ Validate ObjectId
         if (!mongoose.Types.ObjectId.isValid(userId)) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid user ID",
-            });
+            return res.status(400).json({ success: false, message: "Invalid user ID" });
         }
 
-        // ✅ Automatically detect user's role across all collections
         let { user, role: detectedRole } = await findUserAcrossRoles({ userId });
 
         if (!user) {
-            return res.status(404).json({
-                success: false,
-                message: "No account found with this ID across any user type (customer/seller/admin).",
-            });
+            return res.status(404).json({ success: false, message: "No account found with this ID" });
+        }
+        if (user.isVerified) {
+            return res.status(400).json({ success: false, message: "Email is already verified" });
         }
 
-        const actualRole = user.role || detectedRole || role;
+        const actualRole = user.role || detectedRole;
         const { otp, otpExpiry } = generateOTP();
 
-        // ✅ Send email FIRST
-        const emailRes = await sendOTPEmail({ 
-            name: user.name, 
-            email: user.email, 
-            otp, 
-            role: actualRole 
-        });
-
-        if (!emailRes.success) {
-            return res.status(500).json({
-                success: false,
-                message: `Failed to send OTP email: ${emailRes.error}. User data not updated.`,
-                otp: otp 
-            });
-        }
-
-        // ✅ Update and Save ONLY after successful email
+        // ✅ Save first — always succeeds
         user.otp = otp;
         user.otpExpiry = otpExpiry;
         await user.save();
 
+        // ✅ Email in background — never blocks response
+        sendOTPEmail({ name: user.name, email: user.email, otp, role: actualRole }).catch(err =>
+            console.error("[Email] resendOTP failed:", err.message)
+        );
+
         return res.status(200).json({
             success: true,
             message: "A new OTP has been sent to your email.",
-            otp: otp 
+            otp, // DEV only
         });
 
     } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: error.message,
-        });
+        return res.status(500).json({ success: false, message: error.message });
     }
 };
 
@@ -424,63 +289,37 @@ const login = async (req, res) => {
         const { email, password, role = "customer" } = req.body;
 
         if (!email || !password) {
-            return res.status(400).json({
-                success: false,
-                message: "Please provide email and password",
-            });
+            return res.status(400).json({ success: false, message: "Please provide email and password" });
         }
 
         const Model = getModelByRole(role);
         const user = await Model.findOne({ email }).select("+password");
 
         if (!user) {
-            return res.status(401).json({
-                success: false,
-                message: `No ${role} account found with this email`,
-            });
+            return res.status(401).json({ success: false, message: `No ${role} account found with this email` });
         }
-
         if (!user.isActive) {
-            return res.status(403).json({
-                success: false,
-                message: "Your account has been deactivated",
-            });
+            return res.status(403).json({ success: false, message: "Your account has been deactivated" });
         }
-
         if (!user.isVerified) {
             return res.status(403).json({
                 success: false,
                 message: "Please verify your email using OTP before logging in",
-                data: {
-                    userId: user._id,
-                    role: role
-                }
+                data: { userId: user._id, role }
             });
         }
-
         if (role === "seller" && !user.isApproved) {
-            return res.status(403).json({
-                success: false,
-                message: "Your seller account is pending admin approval",
-            });
+            return res.status(403).json({ success: false, message: "Your seller account is pending admin approval" });
         }
 
         const isPasswordCorrect = await bcrypt.compare(password, user.password);
         if (!isPasswordCorrect) {
-            return res.status(401).json({
-                success: false,
-                message: "Invalid email or password",
-            });
+            return res.status(401).json({ success: false, message: "Invalid email or password" });
         }
 
         const token = generateToken(user._id, role);
-
         const cookieName = getCookieNameByRole(role);
-        res.cookie(cookieName, token, {
-            httpOnly: true,
-            sameSite: "strict",
-            maxAge: 30 * 24 * 60 * 60 * 1000,
-        });
+        res.cookie(cookieName, token, { httpOnly: true, sameSite: "strict", maxAge: 30 * 24 * 60 * 60 * 1000 });
 
         return res.status(200).json({
             success: true,
@@ -500,10 +339,7 @@ const login = async (req, res) => {
         });
 
     } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: error.message,
-        });
+        return res.status(500).json({ success: false, message: error.message });
     }
 };
 
@@ -514,57 +350,34 @@ const changePassword = async (req, res) => {
         const { currentPassword, newPassword, confirmNewPassword } = req.body;
 
         if (!currentPassword || !newPassword || !confirmNewPassword) {
-            return res.status(400).json({
-                success: false,
-                message: "Please provide current password, new password and confirm new password",
-            });
+            return res.status(400).json({ success: false, message: "Please provide current password, new password and confirm new password" });
         }
-
         if (newPassword !== confirmNewPassword) {
-            return res.status(400).json({
-                success: false,
-                message: "New password and confirm new password do not match",
-            });
+            return res.status(400).json({ success: false, message: "New password and confirm new password do not match" });
         }
-
         if (currentPassword === newPassword) {
-            return res.status(400).json({
-                success: false,
-                message: "New password must be different from current password",
-            });
+            return res.status(400).json({ success: false, message: "New password must be different from current password" });
         }
 
-        const Model = getModelByRole(req.role);  
+        const Model = getModelByRole(req.role);
         const user = await Model.findById(req.user._id).select("+password");
 
         if (!user) {
-            return res.status(404).json({
-                success: false,
-                message: "User not found",
-            });
+            return res.status(404).json({ success: false, message: "User not found" });
         }
 
         const isMatch = await bcrypt.compare(currentPassword, user.password);
         if (!isMatch) {
-            return res.status(401).json({
-                success: false,
-                message: "Current password is incorrect",
-            });
+            return res.status(401).json({ success: false, message: "Current password is incorrect" });
         }
 
         user.password = await bcrypt.hash(newPassword, 10);
         await user.save();
 
-        return res.status(200).json({
-            success: true,
-            message: "Password changed successfully",
-        });
+        return res.status(200).json({ success: true, message: "Password changed successfully" });
 
     } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: error.message,
-        });
+        return res.status(500).json({ success: false, message: error.message });
     }
 };
 
@@ -572,60 +385,39 @@ const changePassword = async (req, res) => {
 
 const forgotPassword = async (req, res) => {
     try {
-        const { email, role = "customer" } = req.body;
+        const { email } = req.body;
 
         if (!email) {
-            return res.status(400).json({
-                success: false,
-                message: "Please provide your email address",
-            });
+            return res.status(400).json({ success: false, message: "Please provide your email address" });
         }
 
-        // ✅ Automatically detect user's role by email
         let { user, role: detectedRole } = await findUserAcrossRoles({ email });
 
         if (!user) {
-            return res.status(404).json({
-                success: false,
-                message: "No account found with this email across any user type.",
-            });
+            return res.status(404).json({ success: false, message: "No account found with this email" });
         }
 
-        const actualRole = user.role || detectedRole || role;
+        const actualRole = user.role || detectedRole;
         const { otp, otpExpiry } = generateOTP();
 
-        // ✅ Send email FIRST
-        const emailRes = await sendPasswordResetEmail({ 
-            name: user.name, 
-            email: user.email, 
-            otp, 
-            role: actualRole 
-        });
-
-        if (!emailRes.success) {
-            return res.status(500).json({
-                success: false,
-                message: `Failed to send reset email: ${emailRes.error}. Data not updated.`,
-                otp: otp
-            });
-        }
-
-        // ✅ Update and Save only after success
+        // ✅ Save first — always succeeds
         user.otp = otp;
         user.otpExpiry = otpExpiry;
         await user.save();
 
+        // ✅ Email in background — never blocks response
+        sendPasswordResetEmail({ name: user.name, email: user.email, otp, role: actualRole }).catch(err =>
+            console.error("[Email] forgotPassword failed:", err.message)
+        );
+
         return res.status(200).json({
             success: true,
             message: "A password reset code has been sent to your email.",
-            otp: otp
+            otp, // DEV only
         });
 
     } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: error.message,
-        });
+        return res.status(500).json({ success: false, message: error.message });
     }
 };
 
@@ -633,44 +425,26 @@ const forgotPassword = async (req, res) => {
 
 const resetPassword = async (req, res) => {
     try {
-        const { email, otp, newPassword, confirmNewPassword, role = "customer" } = req.body;
+        const { email, otp, newPassword, confirmNewPassword } = req.body;
 
         if (!email || !otp || !newPassword || !confirmNewPassword) {
-            return res.status(400).json({
-                success: false,
-                message: "Please provide email, OTP, new password and confirm new password",
-            });
+            return res.status(400).json({ success: false, message: "Please provide email, OTP, new password and confirm new password" });
         }
-
         if (newPassword !== confirmNewPassword) {
-            return res.status(400).json({
-                success: false,
-                message: "New password and confirm new password do not match",
-            });
+            return res.status(400).json({ success: false, message: "New password and confirm new password do not match" });
         }
 
-        const Model = getModelByRole(role);
-        const user = await Model.findOne({ email }).select("+otp +otpExpiry");
+        // ✅ Auto-detect role — no need to pass role in body
+        let { user } = await findUserAcrossRoles({ email });
 
         if (!user) {
-            return res.status(404).json({
-                success: false,
-                message: "No account found with this email",
-            });
+            return res.status(404).json({ success: false, message: "No account found with this email" });
         }
-
         if (String(otp) !== String(user.otp)) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid OTP code",
-            });
+            return res.status(400).json({ success: false, message: "Invalid OTP code" });
         }
-
         if (user.otpExpiry < new Date()) {
-            return res.status(400).json({
-                success: false,
-                message: "OTP has expired. Please request a new one.",
-            });
+            return res.status(400).json({ success: false, message: "OTP has expired. Please request a new one." });
         }
 
         user.password = await bcrypt.hash(newPassword, 10);
@@ -678,16 +452,10 @@ const resetPassword = async (req, res) => {
         user.otpExpiry = null;
         await user.save();
 
-        return res.status(200).json({
-            success: true,
-            message: "Password reset successfully. You can now login.",
-        });
+        return res.status(200).json({ success: true, message: "Password reset successfully. You can now login." });
 
     } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: error.message,
-        });
+        return res.status(500).json({ success: false, message: error.message });
     }
 };
 
@@ -699,23 +467,13 @@ const getMe = async (req, res) => {
         const user = await Model.findById(req.user._id).select("-password -otp -otpExpiry");
 
         if (!user) {
-            return res.status(404).json({
-                success: false,
-                message: "User not found",
-            });
+            return res.status(404).json({ success: false, message: "User not found" });
         }
 
-        return res.status(200).json({
-            success: true,
-            data: user,
-            message: "Profile fetched successfully",
-        });
+        return res.status(200).json({ success: true, data: user, message: "Profile fetched successfully" });
 
     } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: error.message,
-        });
+        return res.status(500).json({ success: false, message: error.message });
     }
 };
 
@@ -726,97 +484,57 @@ const logout = async (req, res) => {
         const role = req.headers['x-role'] || req.role || 'customer';
         const cookieName = getCookieNameByRole(role);
 
-        res.clearCookie(cookieName, {
-            httpOnly: true,
-            sameSite: "strict",
-        });
+        res.clearCookie(cookieName, { httpOnly: true, sameSite: "strict" });
+        res.clearCookie("token", { httpOnly: true, sameSite: "strict" });
 
-        // Also clear generic token cookie just in case
-        res.clearCookie("token", {
-            httpOnly: true,
-            sameSite: "strict",
-        });
-
-        return res.status(200).json({
-            success: true,
-            message: "Logged out successfully",
-        });
+        return res.status(200).json({ success: true, message: "Logged out successfully" });
 
     } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: error.message,
-        });
+        return res.status(500).json({ success: false, message: error.message });
     }
 };
 
+// ─── INITIATE MANUAL VERIFICATION ────────────────────────────
+
 const initiateManualVerification = async (req, res) => {
     try {
-        const { email, role = "customer" } = req.body;
+        const { email } = req.body;
 
         if (!email) {
-            return res.status(400).json({
-                success: false,
-                message: "Please provide your email address",
-            });
+            return res.status(400).json({ success: false, message: "Please provide your email address" });
         }
 
-        // ✅ Detect role by email
         let { user, role: detectedRole } = await findUserAcrossRoles({ email });
 
         if (!user) {
-            return res.status(404).json({
-                success: false,
-                message: "No account found with this email.",
-            });
+            return res.status(404).json({ success: false, message: "No account found with this email" });
         }
-
         if (user.isVerified) {
-            return res.status(400).json({
-                success: false,
-                message: "Email is already verified. Please login.",
-            });
+            return res.status(400).json({ success: false, message: "Email is already verified. Please login." });
         }
 
-        const actualRole = user.role || detectedRole || role;
+        const actualRole = user.role || detectedRole;
         const { otp, otpExpiry } = generateOTP();
-        
-        // ✅ Send email FIRST
-        const emailRes = await sendOTPEmail({ 
-            name: user.name, 
-            email: user.email, 
-            otp, 
-            role: actualRole 
-        });
 
-        if (!emailRes.success) {
-            return res.status(500).json({
-                success: false,
-                message: `Failed to send verification email: ${emailRes.error}. Data not updated.`,
-                otp: otp,
-            });
-        }
-
-        // ✅ Update and Save only after success
+        // ✅ Save first — always succeeds
         user.otp = otp;
         user.otpExpiry = otpExpiry;
         await user.save();
 
+        // ✅ Email in background — never blocks response
+        sendOTPEmail({ name: user.name, email: user.email, otp, role: actualRole }).catch(err =>
+            console.error("[Email] initiateManualVerification failed:", err.message)
+        );
+
         return res.status(200).json({
             success: true,
             message: "A verification code has been sent to your email.",
-            data: {
-                userId: user._id,
-                role: actualRole
-            },
-            otp: otp
+            data: { userId: user._id, role: actualRole },
+            otp, // DEV only
         });
 
     } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: error.message,
-        });
+        return res.status(500).json({ success: false, message: error.message });
     }
 };
 
