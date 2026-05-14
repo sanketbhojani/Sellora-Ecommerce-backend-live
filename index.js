@@ -11,16 +11,23 @@ import { swaggerDocs } from './config/swagger.js';
 const app = express();
 
 // ✅ CORS — allow React frontends
+// app.use(cors({
+//     origin: [
+//         'http://localhost:5173',
+//         'http://localhost:5174',
+//         'http://localhost:5175',
+//         'http://localhost:5176',
+//         'http://localhost:5177',
+//         'http://localhost:5178',
+//         process.env.FRONTEND_URL, // Allow deployed frontend URL
+//     ].filter(Boolean),
+//     credentials: true,
+//     allowedHeaders: ['Content-Type', 'Authorization', 'x-role'],
+// }));
+
+// ✅ CORS — allow all origins
 app.use(cors({
-    origin: [
-        'http://localhost:5173',
-        'http://localhost:5174',
-        'http://localhost:5175',
-        'http://localhost:5176',
-        'http://localhost:5177',
-        'http://localhost:5178',
-        process.env.FRONTEND_URL, // Allow deployed frontend URL
-    ].filter(Boolean),
+    origin: true,  // allows any origin
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization', 'x-role'],
 }));
