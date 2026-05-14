@@ -24,6 +24,24 @@ const getCookieNameByRole = (role) => {
     return "customerToken";
 };
 
+// ─── Universal User Finder ────────────────────────────────────
+// Detects user across all collections (Customer, Seller, Admin)
+const findUserAcrossRoles = async ({ userId, email }) => {
+    const roles = ["customer", "seller", "admin"];
+    for (const role of roles) {
+        const Model = getModelByRole(role);
+        let user;
+        if (userId) {
+            user = await Model.findById(userId).select("+otp +otpExpiry +password");
+        } else if (email) {
+            user = await Model.findOne({ email }).select("+otp +otpExpiry +password");
+        }
+        
+        if (user) return { user, role };
+    }
+    return { user: null, role: null };
+};
+
 // ─── REGISTER CUSTOMER ────────────────────────────────────────
 
 const registerCustomer = async (req, res) => {
@@ -270,10 +288,8 @@ const verifyOTP = async (req, res) => {
             });
         }
 
-        const Model = getModelByRole(role);
-
-        // ✅ Find by _id instead of email
-        const user = await Model.findById(userId).select("+otp +otpExpiry");
+        // ✅ Find user across all collections automatically if specific role search fails
+        let { user, role: detectedRole } = await findUserAcrossRoles({ userId });
 
         if (!user) {
             return res.status(404).json({
@@ -281,6 +297,9 @@ const verifyOTP = async (req, res) => {
                 message: "No account found with this ID",
             });
         }
+
+        // Use detected role for token generation
+        const actualRole = detectedRole;
 
         if (user.isVerified) {
             return res.status(400).json({
@@ -365,25 +384,17 @@ const resendOTP = async (req, res) => {
             });
         }
 
-        const Model = getModelByRole(role);
-
-        // ✅ Find by _id instead of email
-        const user = await Model.findById(userId);
+        // ✅ Automatically detect user's role across all collections
+        let { user, role: detectedRole } = await findUserAcrossRoles({ userId });
 
         if (!user) {
             return res.status(404).json({
                 success: false,
-                message: "No account found with this ID",
+                message: "No account found with this ID across any user type (customer/seller/admin).",
             });
         }
 
-        if (user.isVerified) {
-            return res.status(400).json({
-                success: false,
-                message: "Email is already verified",
-            });
-        }
-
+        const actualRole = detectedRole;
         const { otp, otpExpiry } = generateOTP();
 
         // ✅ Use user's actual role from DB for template
@@ -588,16 +599,17 @@ const forgotPassword = async (req, res) => {
             });
         }
 
-        const Model = getModelByRole(role);
-        const user = await Model.findOne({ email });
+        // ✅ Automatically detect user's role by email
+        let { user, role: detectedRole } = await findUserAcrossRoles({ email });
 
         if (!user) {
             return res.status(404).json({
                 success: false,
-                message: "No account found with this email",
+                message: "No account found with this email across any user type.",
             });
         }
 
+        const actualRole = detectedRole;
         const { otp, otpExpiry } = generateOTP();
 
         // ✅ Use user's actual role
@@ -770,13 +782,13 @@ const initiateManualVerification = async (req, res) => {
             });
         }
 
-        const Model = getModelByRole(role);
-        const user = await Model.findOne({ email });
+        // ✅ Detect role by email
+        let { user, role: detectedRole } = await findUserAcrossRoles({ email });
 
         if (!user) {
             return res.status(404).json({
                 success: false,
-                message: "No account found with this email",
+                message: "No account found with this email.",
             });
         }
 
@@ -787,6 +799,7 @@ const initiateManualVerification = async (req, res) => {
             });
         }
 
+        const actualRole = detectedRole;
         const { otp, otpExpiry } = generateOTP();
 
         // ✅ Use actual role
