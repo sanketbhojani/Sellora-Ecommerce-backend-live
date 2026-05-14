@@ -374,15 +374,30 @@ const resendOTP = async (req, res) => {
         user.otpExpiry = otpExpiry;
         await user.save();
 
-        // ✅ Await email
-        const emailRes = await sendOTPEmail({ name: user.name, email: user.email, otp, role });
+        // ✅ Use user's actual role from DB for template
+        const actualRole = user.role || role;
+
+        // ✅ Await email and check result
+        const emailRes = await sendOTPEmail({ 
+            name: user.name, 
+            email: user.email, 
+            otp, 
+            role: actualRole 
+        });
+
+        if (!emailRes.success) {
+            return res.status(500).json({
+                success: false,
+                message: `Failed to send OTP email: ${emailRes.error}. Please check your SMTP configuration.`,
+                // ✅ Still return OTP so they can continue testing even if email fails
+                otp: otp 
+            });
+        }
 
         return res.status(200).json({
             success: true,
-            message: emailRes.success 
-                ? "A new OTP has been sent to your email."
-                : `Failed to send OTP: ${emailRes.error}. Please check your EMAIL_USER/PASS.`,
-            ...((process.env.NODE_ENV !== 'production' || process.env.DEBUG_OTP === 'true') && { otp }),
+            message: "A new OTP has been sent to your email.",
+            otp: otp // ✅ Always return for easier testing in Swagger/Dev
         });
 
     } catch (error) {
@@ -572,15 +587,29 @@ const forgotPassword = async (req, res) => {
         user.otpExpiry = otpExpiry;
         await user.save();
 
+        // ✅ Use user's actual role
+        const actualRole = user.role || role;
+
         // ✅ Await email
-        const emailRes = await sendPasswordResetEmail({ name: user.name, email: user.email, otp, role });
+        const emailRes = await sendPasswordResetEmail({ 
+            name: user.name, 
+            email: user.email, 
+            otp, 
+            role: actualRole 
+        });
+
+        if (!emailRes.success) {
+            return res.status(500).json({
+                success: false,
+                message: `Failed to send reset email: ${emailRes.error}`,
+                otp: otp
+            });
+        }
 
         return res.status(200).json({
             success: true,
-            message: emailRes.success 
-                ? "A password reset code has been sent to your email."
-                : `Failed to send reset email: ${emailRes.error}. Please check your EMAIL_USER/PASS.`,
-            ...((process.env.NODE_ENV !== 'production' || process.env.DEBUG_OTP === 'true') && { otp }),
+            message: "A password reset code has been sent to your email.",
+            otp: otp
         });
 
     } catch (error) {
@@ -745,16 +774,33 @@ const initiateManualVerification = async (req, res) => {
         user.otpExpiry = otpExpiry;
         await user.save();
 
-        const emailRes = await sendOTPEmail({ name: user.name, email: user.email, otp, role });
+        // ✅ Use actual role
+        const actualRole = user.role || role;
+        
+        const emailRes = await sendOTPEmail({ 
+            name: user.name, 
+            email: user.email, 
+            otp, 
+            role: actualRole 
+        });
+
+        if (!emailRes.success) {
+            return res.status(500).json({
+                success: false,
+                message: `Failed to send verification email: ${emailRes.error}`,
+                otp: otp,
+                data: { userId: user._id, role: actualRole }
+            });
+        }
 
         return res.status(200).json({
             success: true,
             message: "A verification code has been sent to your email.",
             data: {
                 userId: user._id,
-                role: role
+                role: actualRole
             },
-            ...((process.env.NODE_ENV !== 'production' || process.env.DEBUG_OTP === 'true') && { otp }),
+            otp: otp
         });
 
     } catch (error) {
