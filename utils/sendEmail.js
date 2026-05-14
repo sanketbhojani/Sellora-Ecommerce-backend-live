@@ -6,23 +6,18 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ─── Create transporter once (reusable) ───────────────────────
 const createTransporter = () => {
     return nodemailer.createTransport({
-        host: 'smtp.gmail.com',   
-        port: 465,                // ✅ Port 465 (SMTPS) is often more reliable on Render than 587
-        secure: true,             // ✅ true for port 465
+        host: 'smtp.gmail.com',
+        port: 587,          // ✅ 587 works on Render, 465 is often blocked
+        secure: false,      // ✅ false for port 587 (STARTTLS)
         auth: {
             user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS,
+            pass: process.env.EMAIL_PASS, // must be Gmail App Password
         },
-        // ✅ Add TLS options to prevent connection drops
         tls: {
             rejectUnauthorized: false
-        },
-        connectionTimeout: 20000, // Increased timeout
-        greetingTimeout: 20000,
-        socketTimeout: 30000,
+        }
     });
 };
 
@@ -30,29 +25,26 @@ const createTransporter = () => {
 const sendOTPEmail = async ({ name, email, otp, role }) => {
     try {
         const transporter = createTransporter();
-
-        // ✅ Verify SMTP connection before sending (helps debug env var issues)
-        await transporter.verify();
+        // ❌ Removed transporter.verify() — crashes server on Render
 
         const templatePath = path.join(__dirname, '../views/emails/otpEmail.ejs');
         const html = await ejs.renderFile(templatePath, { name, otp, role });
 
-        await transporter.sendMail({
+        const info = await transporter.sendMail({
             from: `"Sellora" <${process.env.EMAIL_USER}>`,
             to: email,
             subject: 'OTP Verification Code',
             html,
         });
 
-        console.log(`[Email] OTP sent successfully to ${email}`);
+        console.log(`[Email] OTP sent to ${email} — messageId: ${info.messageId}`);
         return { success: true };
 
     } catch (error) {
-        // ✅ Detailed error logging to debug on Render
         console.error('[Email] sendOTPEmail failed:', {
             message: error.message,
-            code: error.code,        // e.g. EAUTH = wrong credentials
-            command: error.command,  // e.g. AUTH = auth step failed
+            code: error.code,
+            command: error.command,
             EMAIL_USER: process.env.EMAIL_USER ? '✅ set' : '❌ missing',
             EMAIL_PASS: process.env.EMAIL_PASS ? '✅ set' : '❌ missing',
         });
@@ -64,19 +56,19 @@ const sendOTPEmail = async ({ name, email, otp, role }) => {
 const sendPasswordResetEmail = async ({ name, email, otp, role }) => {
     try {
         const transporter = createTransporter();
-        await transporter.verify();
+        // ❌ Removed transporter.verify()
 
         const templatePath = path.join(__dirname, '../views/emails/resetPasswordEmail.ejs');
         const html = await ejs.renderFile(templatePath, { name, otp, role });
 
-        await transporter.sendMail({
+        const info = await transporter.sendMail({
             from: `"Sellora" <${process.env.EMAIL_USER}>`,
             to: email,
             subject: 'Password Reset Code',
             html,
         });
 
-        console.log(`[Email] Reset email sent successfully to ${email}`);
+        console.log(`[Email] Reset email sent to ${email} — messageId: ${info.messageId}`);
         return { success: true };
 
     } catch (error) {
