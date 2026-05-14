@@ -8,9 +8,7 @@ const __dirname = path.dirname(__filename);
 
 const createTransporter = () => {
     return nodemailer.createTransport({
-        host: 'smtp.gmail.com',
-        port: 465,          // ✅ Use 465 (SSL) - more reliable on Render/Cloud
-        secure: true,       // ✅ true for 465
+        service: 'gmail', // ✅ Using service shortcut for better internal routing
         auth: {
             user: process.env.EMAIL_USER,
             pass: process.env.EMAIL_PASS, // must be Gmail App Password

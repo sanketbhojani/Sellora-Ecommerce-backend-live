@@ -82,18 +82,11 @@ const registerCustomer = async (req, res) => {
             otpExpiry,
         });
 
-        // ✅ Send email FIRST. If it fails, catch block returns error and user is NEVER saved.
-        const emailRes = await sendOTPEmail({ name, email, otp, role: "Customer" });
-
-        if (!emailRes.success) {
-            return res.status(500).json({
-                success: false,
-                message: `Failed to send verification email: ${emailRes.error}. Registration cancelled.`,
-            });
-        }
-
-        // ✅ Save only after successful email
+        // ✅ Save user first to ensure they are registered
         await newCustomer.save();
+
+        // ✅ Try sending email but don't block the 201 response if it fails
+        const emailRes = await sendOTPEmail({ name, email, otp, role: "Customer" });
 
         return res.status(201).json({
             success: true,
@@ -104,7 +97,9 @@ const registerCustomer = async (req, res) => {
                 isVerified: newCustomer.isVerified,
                 otp: otp 
             },
-            message: "Registration successful. A verification code has been sent to your email.",
+            message: emailRes.success 
+                ? "Registration successful. A verification code has been sent to your email."
+                : "Registration successful, but we couldn't send the email. Please use the OTP shown below to verify your account.",
         });
 
     } catch (error) {
@@ -157,18 +152,11 @@ const registerSeller = async (req, res) => {
             otpExpiry,
         });
 
-        // ✅ Send email FIRST
-        const emailRes = await sendOTPEmail({ name, email, otp, role: "Seller" });
-
-        if (!emailRes.success) {
-            return res.status(500).json({
-                success: false,
-                message: `Failed to send verification email: ${emailRes.error}. Registration cancelled.`,
-            });
-        }
-
-        // ✅ Save only after successful email
+        // ✅ Save seller first
         await newSeller.save();
+
+        // ✅ Try sending email
+        const emailRes = await sendOTPEmail({ name, email, otp, role: "Seller" });
 
         return res.status(201).json({
             success: true,
@@ -181,7 +169,9 @@ const registerSeller = async (req, res) => {
                 isApproved: newSeller.isApproved,
                 otp: otp 
             },
-            message: "Seller registered successfully. A verification code has been sent to your email.",
+            message: emailRes.success 
+                ? "Seller registered successfully. A verification code has been sent to your email."
+                : "Seller registered successfully, but email delivery failed. Use the OTP below to verify.",
         });
 
     } catch (error) {
@@ -233,18 +223,11 @@ const registerAdmin = async (req, res) => {
             otpExpiry,
         });
 
-        // ✅ Send email FIRST
-        const emailRes = await sendOTPEmail({ name, email, otp, role: "Admin" });
-
-        if (!emailRes.success) {
-            return res.status(500).json({
-                success: false,
-                message: `Failed to send verification email: ${emailRes.error}. Admin creation cancelled.`,
-            });
-        }
-
-        // ✅ Save only after successful email
+        // ✅ Save admin first
         await newAdmin.save();
+
+        // ✅ Try sending email
+        const emailRes = await sendOTPEmail({ name, email, otp, role: "Admin" });
 
         return res.status(201).json({
             success: true,
@@ -255,7 +238,9 @@ const registerAdmin = async (req, res) => {
                 isVerified: newAdmin.isVerified,
                 otp: otp 
             },
-            message: "Admin created successfully. A verification code has been sent to your email.",
+            message: emailRes.success 
+                ? "Admin created successfully. A verification code has been sent to your email."
+                : "Admin created successfully, but email delivery failed. Use the OTP below.",
         });
 
     } catch (error) {
