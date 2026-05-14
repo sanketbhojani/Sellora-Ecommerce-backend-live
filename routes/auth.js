@@ -1,8 +1,8 @@
 import express from 'express'
 import { changePassword, forgotPassword, getMe, initiateManualVerification, login, logout, registerAdmin, registerCustomer, registerSeller, resendOTP, resetPassword, verifyOTP } from '../controllers/authController.js';
-import {  authorizeRoles, protect } from '../middlewares/authMiddleware.js';
+import { authorizeRoles, protect } from '../middlewares/authMiddleware.js';
 
-const router  = express.Router();
+const router = express.Router();
 
 /**
  * @swagger
@@ -44,11 +44,41 @@ const router  = express.Router();
  *       201:
  *         description: |
  *           Customer registered successfully. OTP sent to email.
- *           **DEV mode:** The response also contains `data.otp` with the OTP value for Swagger testing — copy it directly into the verifyOTP call.
+ *           **DEV mode:** The response also contains `data.otp` — copy it directly into the verifyOTP call.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     _id:
+ *                       type: string
+ *                       example: 6a05848d6868e1de7a296497
+ *                     name:
+ *                       type: string
+ *                       example: Sanket
+ *                     email:
+ *                       type: string
+ *                       example: sanket@gmail.com
+ *                     isVerified:
+ *                       type: boolean
+ *                       example: false
+ *                     otp:
+ *                       type: string
+ *                       description: "DEV only — copy this for verifyOTP"
+ *                       example: "482910"
+ *                 message:
+ *                   type: string
+ *                   example: Registration successful. A verification code has been sent to your email.
  *       400:
  *         description: All fields required / Passwords do not match / User already exists
  */
-router.post('/register/registerCustomer',registerCustomer)
+router.post('/register/registerCustomer', registerCustomer)
 
 /**
  * @swagger
@@ -89,11 +119,11 @@ router.post('/register/registerCustomer',registerCustomer)
  *       201:
  *         description: |
  *           Seller registered. OTP sent. Awaiting admin approval.
- *           **DEV mode:** The response also contains `data.otp` with the OTP value for Swagger testing — copy it directly into the verifyOTP call.
+ *           **DEV mode:** The response also contains `data.otp` — copy it directly into the verifyOTP call.
  *       400:
  *         description: Missing fields / Passwords do not match / Seller already exists
  */
-router.post('/register/registerSeller',registerSeller)
+router.post('/register/registerSeller', registerSeller)
 
 /**
  * @swagger
@@ -133,13 +163,13 @@ router.post('/register/registerSeller',registerSeller)
  *       201:
  *         description: |
  *           Admin created. OTP sent to email.
- *           **DEV mode:** The response also contains `data.otp` with the OTP value for Swagger testing — copy it directly into the verifyOTP call.
+ *           **DEV mode:** The response also contains `data.otp` — copy it directly into the verifyOTP call.
  *       400:
  *         description: Missing fields / Passwords do not match / Email already registered
  *       403:
  *         description: Forbidden - admin role required
  */
-router.post('/register/registerAdmin',protect,authorizeRoles("admin"),registerAdmin)
+router.post('/register/registerAdmin', protect, authorizeRoles("admin"), registerAdmin)
 
 /**
  * @swagger
@@ -148,7 +178,9 @@ router.post('/register/registerAdmin',protect,authorizeRoles("admin"),registerAd
  *     summary: Verify OTP to activate account
  *     description: |
  *       Verifies the 6-digit OTP sent to the user's email during registration.
- *       **Role detection:** The system automatically identifies the user type based on the `userId`.
+ *       **How to test:**
+ *       1. Register a user → copy `data._id` and `data.otp` from response
+ *       2. Paste both here and execute
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -160,16 +192,16 @@ router.post('/register/registerAdmin',protect,authorizeRoles("admin"),registerAd
  *             properties:
  *               userId:
  *                 type: string
- *                 description: Unique ID of the user
- *                 example: 664a1b2c3d4e5f6789012345
+ *                 description: Copy _id from register response
+ *                 example: 6a05848d6868e1de7a296497
  *               otp:
  *                 type: string
- *                 description: 6-digit verification code
- *                 example: "123456"
+ *                 description: Copy otp from register response
+ *                 example: "482910"
  *               role:
  *                 type: string
  *                 enum: [customer, seller, admin]
- *                 description: (Optional) System will auto-detect if omitted.
+ *                 description: Optional — auto-detected if omitted
  *                 default: customer
  *                 example: customer
  *     responses:
@@ -180,7 +212,7 @@ router.post('/register/registerAdmin',protect,authorizeRoles("admin"),registerAd
  *       404:
  *         description: No account found with this ID
  */
-router.post('/verifyOTP',verifyOTP)
+router.post('/verifyOTP', verifyOTP)
 
 /**
  * @swagger
@@ -188,8 +220,12 @@ router.post('/verifyOTP',verifyOTP)
  *   post:
  *     summary: Resend OTP to registered email
  *     description: |
- *       Resends a new verification OTP to the user's email.
- *       **Role detection:** The system automatically identifies the user (Customer/Seller/Admin) based on the `userId`.
+ *       Generates a fresh OTP and sends it to the user's registered email.
+ *
+ *       **How to test:**
+ *       1. Register a user → copy `data._id` from the register response
+ *       2. Paste it as `userId` below and execute
+ *       3. Copy the `otp` from this response → use in `/auth/verifyOTP`
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -201,31 +237,46 @@ router.post('/verifyOTP',verifyOTP)
  *             properties:
  *               userId:
  *                 type: string
- *                 description: Unique ID of the user (from registration response)
- *                 example: 664a1b2c3d4e5f6789012345
+ *                 description: Copy _id from register response
+ *                 example: 6a05848d6868e1de7a296497
  *               role:
  *                 type: string
  *                 enum: [customer, seller, admin]
- *                 description: (Optional) System will auto-detect if omitted.
+ *                 description: Optional — auto-detected if omitted
  *                 default: customer
  *                 example: customer
  *     responses:
  *       200:
- *         description: |
- *           New OTP sent to email.
- *           **DEV mode:** The response also contains `otp` at the top level — copy it directly for testing.
+ *         description: New OTP sent to email.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: A new OTP has been sent to your email.
+ *                 otp:
+ *                   type: string
+ *                   description: DEV only — copy this for verifyOTP
+ *                   example: "297289"
  *       400:
- *         description: Missing userId / Already verified
+ *         description: Missing userId / Invalid ObjectId
  *       404:
  *         description: No account found with this ID
+ *       500:
+ *         description: Email sending failed
  */
-router.post('/resendOTP',resendOTP)
+router.post('/resendOTP', resendOTP)
 
 /**
  * @swagger
  * /auth/initiateManualVerification:
  *   post:
- *     summary: Initiate manual verification (send OTP)
+ *     summary: Initiate manual verification (send OTP by email)
  *     description: |
  *       Sends a verification OTP to an existing but unverified account.
  *       Useful if the user missed the initial registration OTP.
@@ -249,8 +300,32 @@ router.post('/resendOTP',resendOTP)
  *     responses:
  *       200:
  *         description: |
- *           Verification OTP sent to email.
- *           **DEV mode:** The response also contains `otp` at the top level.
+ *           Verification OTP sent.
+ *           **DEV mode:** Response contains `otp` and `data.userId` — use both in `/auth/verifyOTP`.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: A verification code has been sent to your email.
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     userId:
+ *                       type: string
+ *                       example: 6a05848d6868e1de7a296497
+ *                     role:
+ *                       type: string
+ *                       example: customer
+ *                 otp:
+ *                   type: string
+ *                   description: DEV only
+ *                   example: "391047"
  *       400:
  *         description: Already verified or missing email
  *       404:
@@ -285,13 +360,13 @@ router.post('/initiateManualVerification', initiateManualVerification)
  *                 example: customer
  *     responses:
  *       200:
- *         description: Login successful — returns JWT token in cookie
+ *         description: Login successful — JWT token returned in cookie and response body
  *       401:
  *         description: Invalid email or password
  *       403:
- *         description: Account deactivated / Not verified / Seller not approved
+ *         description: Account deactivated / Email not verified / Seller not approved
  */
-router.post('/login',login)
+router.post('/login', login)
 
 /**
  * @swagger
@@ -311,7 +386,7 @@ router.post('/login',login)
  *             properties:
  *               currentPassword:
  *                 type: string
- *                 example: oldPass123
+ *                 example: user123
  *               newPassword:
  *                 type: string
  *                 example: newPass456
@@ -324,7 +399,7 @@ router.post('/login',login)
  *       401:
  *         description: Current password is incorrect
  */
-router.post('/changePassword',protect,changePassword)
+router.post('/changePassword', protect, changePassword)
 
 /**
  * @swagger
@@ -332,8 +407,13 @@ router.post('/changePassword',protect,changePassword)
  *   post:
  *     summary: Send password reset OTP to email
  *     description: |
- *       Initiates the password reset flow. Sends a 6-digit OTP to the user's registered email.
- *       **Role detection:** The system automatically identifies the user type based on the email provided.
+ *       Sends a 6-digit reset OTP to the user's registered email.
+ *       Auto-detects user type (customer/seller/admin) from email — no role needed.
+ *
+ *       **How to test:**
+ *       1. Enter your registered email below and execute
+ *       2. Copy the `otp` from this response
+ *       3. Go to `/auth/resetPassword` → paste email + otp + new passwords
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -346,30 +426,45 @@ router.post('/changePassword',protect,changePassword)
  *               email:
  *                 type: string
  *                 example: sanket@gmail.com
- *               role:
- *                 type: string
- *                 enum: [customer, seller, admin]
- *                 description: (Optional) System will auto-detect if omitted.
- *                 default: customer
- *                 example: customer
  *     responses:
  *       200:
- *         description: |
- *           Password reset OTP sent to email.
- *           **DEV mode:** The response also contains `otp` at the top level — copy it directly into the resetPassword call.
+ *         description: Password reset OTP sent successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: A password reset code has been sent to your email.
+ *                 otp:
+ *                   type: string
+ *                   description: DEV only — copy this for resetPassword
+ *                   example: "391047"
  *       404:
  *         description: No account found with this email
+ *       500:
+ *         description: Email sending failed
  */
-router.post('/forgotPassword',forgotPassword)
+router.post('/forgotPassword', forgotPassword)
 
 /**
  * @swagger
  * /auth/resetPassword:
  *   post:
- *     summary: Reset password using OTP received in email
+ *     summary: Reset password using OTP
  *     description: |
  *       Completes the password reset process.
- *       **Important:** Ensure the `role` matches the account type (customer/seller/admin) for the request to succeed.
+ *
+ *       **How to test:**
+ *       1. Call `/auth/forgotPassword` with your email → copy `otp` from response
+ *       2. Fill all fields below and execute
+ *       3. Then login with your new password
+ *
+ *       **Note:** `role` must match the account type (customer / seller / admin).
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -384,7 +479,8 @@ router.post('/forgotPassword',forgotPassword)
  *                 example: sanket@gmail.com
  *               otp:
  *                 type: string
- *                 example: "123456"
+ *                 description: Copy otp from forgotPassword response
+ *                 example: "391047"
  *               newPassword:
  *                 type: string
  *                 example: newPass456
@@ -394,16 +490,18 @@ router.post('/forgotPassword',forgotPassword)
  *               role:
  *                 type: string
  *                 enum: [customer, seller, admin]
- *                 description: Must match the user's role.
+ *                 description: Must match the account type
  *                 default: customer
  *                 example: customer
  *     responses:
  *       200:
- *         description: Password reset successfully
+ *         description: Password reset successfully. You can now login with new password.
  *       400:
  *         description: Invalid OTP / OTP expired / Passwords do not match
+ *       404:
+ *         description: No account found with this email
  */
-router.post('/resetPassword',resetPassword)
+router.post('/resetPassword', resetPassword)
 
 /**
  * @swagger
@@ -421,7 +519,7 @@ router.post('/resetPassword',resetPassword)
  *       404:
  *         description: User not found
  */
-router.get('/getMe',protect,getMe)
+router.get('/getMe', protect, getMe)
 
 /**
  * @swagger
@@ -446,5 +544,6 @@ router.get('/getMe',protect,getMe)
  *       200:
  *         description: Logged out successfully
  */
-router.post('/logout',logout)
+router.post('/logout', logout)
+
 export default router;

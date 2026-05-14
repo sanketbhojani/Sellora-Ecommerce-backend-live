@@ -6,17 +6,16 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// ─── Brevo SMTP (works on Render — Gmail/port 465/587 are blocked) ────────────
 const createTransporter = () => {
     return nodemailer.createTransport({
-        service: 'gmail', // ✅ Using service shortcut for better internal routing
+        host: process.env.BREVO_HOST,         // smtp-relay.brevo.com
+        port: Number(process.env.BREVO_PORT), // 587
+        secure: false,                         // false for port 587
         auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS, // must be Gmail App Password
+            user: process.env.BREVO_USER,     // your brevo login email
+            pass: process.env.BREVO_PASS,     // brevo SMTP key (NOT login password)
         },
-        tls: {
-            rejectUnauthorized: false
-        },
-        family: 4 // ✅ Force IPv4 to resolve "ENETUNREACH" issues on Render
     });
 };
 
@@ -24,13 +23,12 @@ const createTransporter = () => {
 const sendOTPEmail = async ({ name, email, otp, role }) => {
     try {
         const transporter = createTransporter();
-        // ❌ Removed transporter.verify() — crashes server on Render
 
         const templatePath = path.join(__dirname, '../views/emails/otpEmail.ejs');
         const html = await ejs.renderFile(templatePath, { name, otp, role });
 
         const info = await transporter.sendMail({
-            from: `"Sellora" <${process.env.EMAIL_USER}>`,
+            from: `"Sellora" <${process.env.BREVO_USER}>`,
             to: email,
             subject: 'OTP Verification Code',
             html,
@@ -43,9 +41,9 @@ const sendOTPEmail = async ({ name, email, otp, role }) => {
         console.error('[Email] sendOTPEmail failed:', {
             message: error.message,
             code: error.code,
-            command: error.command,
-            EMAIL_USER: process.env.EMAIL_USER ? '✅ set' : '❌ missing',
-            EMAIL_PASS: process.env.EMAIL_PASS ? '✅ set' : '❌ missing',
+            BREVO_HOST: process.env.BREVO_HOST   ? '✅ set' : '❌ missing',
+            BREVO_USER: process.env.BREVO_USER   ? '✅ set' : '❌ missing',
+            BREVO_PASS: process.env.BREVO_PASS   ? '✅ set' : '❌ missing',
         });
         return { success: false, error: error.message };
     }
@@ -55,13 +53,12 @@ const sendOTPEmail = async ({ name, email, otp, role }) => {
 const sendPasswordResetEmail = async ({ name, email, otp, role }) => {
     try {
         const transporter = createTransporter();
-        // ❌ Removed transporter.verify()
 
         const templatePath = path.join(__dirname, '../views/emails/resetPasswordEmail.ejs');
         const html = await ejs.renderFile(templatePath, { name, otp, role });
 
         const info = await transporter.sendMail({
-            from: `"Sellora" <${process.env.EMAIL_USER}>`,
+            from: `"Sellora" <${process.env.BREVO_USER}>`,
             to: email,
             subject: 'Password Reset Code',
             html,
@@ -74,9 +71,9 @@ const sendPasswordResetEmail = async ({ name, email, otp, role }) => {
         console.error('[Email] sendPasswordResetEmail failed:', {
             message: error.message,
             code: error.code,
-            command: error.command,
-            EMAIL_USER: process.env.EMAIL_USER ? '✅ set' : '❌ missing',
-            EMAIL_PASS: process.env.EMAIL_PASS ? '✅ set' : '❌ missing',
+            BREVO_HOST: process.env.BREVO_HOST   ? '✅ set' : '❌ missing',
+            BREVO_USER: process.env.BREVO_USER   ? '✅ set' : '❌ missing',
+            BREVO_PASS: process.env.BREVO_PASS   ? '✅ set' : '❌ missing',
         });
         return { success: false, error: error.message };
     }
