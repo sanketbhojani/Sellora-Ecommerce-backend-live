@@ -9,17 +9,20 @@ const __dirname = path.dirname(__filename);
 // ─── Create transporter once (reusable) ───────────────────────
 const createTransporter = () => {
     return nodemailer.createTransport({
-        host: 'smtp.gmail.com',   // ✅ Explicit host instead of service:'gmail'
-        port: 587,                 // ✅ TLS port (more reliable on cloud servers)
-        secure: false,             // false for port 587 (STARTTLS)
+        host: 'smtp.gmail.com',   
+        port: 465,                // ✅ Port 465 (SMTPS) is often more reliable on Render than 587
+        secure: true,             // ✅ true for port 465
         auth: {
             user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS, // ← Must be App Password, NOT Gmail password
+            pass: process.env.EMAIL_PASS,
         },
-        // ✅ Prevents timeout issues on Render's network
-        connectionTimeout: 10000,
-        greetingTimeout: 10000,
-        socketTimeout: 15000,
+        // ✅ Add TLS options to prevent connection drops
+        tls: {
+            rejectUnauthorized: false
+        },
+        connectionTimeout: 20000, // Increased timeout
+        greetingTimeout: 20000,
+        socketTimeout: 30000,
     });
 };
 
