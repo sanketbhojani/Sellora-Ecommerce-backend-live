@@ -8,7 +8,9 @@ const router = express.Router();
  * @swagger
  * tags:
  *   name: Auth
- *   description: Authentication endpoints
+ *   description: |
+ *     ⚠️ **Render Free Tier Notice:** First request after inactivity takes **30–60 seconds** (cold start).
+ *     Please wait — do NOT re-submit. Subsequent requests will be fast.
  */
 
 /**
@@ -17,6 +19,7 @@ const router = express.Router();
  *   post:
  *     summary: Register a new customer
  *     tags: [Auth]
+ *     x-timeout: 120000
  *     requestBody:
  *       required: true
  *       content:
@@ -43,8 +46,8 @@ const router = express.Router();
  *     responses:
  *       201:
  *         description: |
- *           Customer registered successfully. OTP sent to email.
- *           **DEV mode:** The response also contains `data.otp` — copy it directly into the verifyOTP call.
+ *           Customer registered. OTP sent to email.
+ *           ✅ **DEV:** Copy `data._id` → use in verifyOTP/resendOTP. Copy `data.otp` → use in verifyOTP.
  *         content:
  *           application/json:
  *             schema:
@@ -70,13 +73,15 @@ const router = express.Router();
  *                       example: false
  *                     otp:
  *                       type: string
- *                       description: "DEV only — copy this for verifyOTP"
+ *                       description: DEV only — copy into verifyOTP
  *                       example: "482910"
  *                 message:
  *                   type: string
  *                   example: Registration successful. A verification code has been sent to your email.
  *       400:
  *         description: All fields required / Passwords do not match / User already exists
+ *       500:
+ *         description: Server error or email failed
  */
 router.post('/register/registerCustomer', registerCustomer)
 
@@ -86,6 +91,7 @@ router.post('/register/registerCustomer', registerCustomer)
  *   post:
  *     summary: Register a new seller
  *     tags: [Auth]
+ *     x-timeout: 120000
  *     requestBody:
  *       required: true
  *       content:
@@ -119,7 +125,7 @@ router.post('/register/registerCustomer', registerCustomer)
  *       201:
  *         description: |
  *           Seller registered. OTP sent. Awaiting admin approval.
- *           **DEV mode:** The response also contains `data.otp` — copy it directly into the verifyOTP call.
+ *           ✅ **DEV:** Copy `data._id` and `data.otp` → use in verifyOTP.
  *       400:
  *         description: Missing fields / Passwords do not match / Seller already exists
  */
@@ -133,6 +139,7 @@ router.post('/register/registerSeller', registerSeller)
  *     tags: [Auth]
  *     security:
  *       - bearerAuth: []
+ *     x-timeout: 120000
  *     requestBody:
  *       required: true
  *       content:
@@ -163,11 +170,11 @@ router.post('/register/registerSeller', registerSeller)
  *       201:
  *         description: |
  *           Admin created. OTP sent to email.
- *           **DEV mode:** The response also contains `data.otp` — copy it directly into the verifyOTP call.
+ *           ✅ **DEV:** Copy `data._id` and `data.otp` → use in verifyOTP.
  *       400:
  *         description: Missing fields / Passwords do not match / Email already registered
  *       403:
- *         description: Forbidden - admin role required
+ *         description: Forbidden — admin role required
  */
 router.post('/register/registerAdmin', protect, authorizeRoles("admin"), registerAdmin)
 
@@ -177,10 +184,9 @@ router.post('/register/registerAdmin', protect, authorizeRoles("admin"), registe
  *   post:
  *     summary: Verify OTP to activate account
  *     description: |
- *       Verifies the 6-digit OTP sent to the user's email during registration.
- *       **How to test:**
- *       1. Register a user → copy `data._id` and `data.otp` from response
- *       2. Paste both here and execute
+ *       **How to use:**
+ *       1. Call `/auth/register/registerCustomer` → copy `data._id` and `data.otp`
+ *       2. Paste `_id` as `userId` and paste `otp` below → Execute
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -201,12 +207,12 @@ router.post('/register/registerAdmin', protect, authorizeRoles("admin"), registe
  *               role:
  *                 type: string
  *                 enum: [customer, seller, admin]
- *                 description: Optional — auto-detected if omitted
+ *                 description: Optional — auto-detected
  *                 default: customer
  *                 example: customer
  *     responses:
  *       200:
- *         description: Email verified successfully. JWT token returned in cookie.
+ *         description: Email verified. JWT token returned in cookie + response body.
  *       400:
  *         description: Invalid OTP / OTP expired / Already verified
  *       404:
@@ -220,13 +226,14 @@ router.post('/verifyOTP', verifyOTP)
  *   post:
  *     summary: Resend OTP to registered email
  *     description: |
- *       Generates a fresh OTP and sends it to the user's registered email.
+ *       **How to use:**
+ *       1. Call `/auth/register/registerCustomer` → copy `data._id`
+ *       2. Paste as `userId` below → Execute
+ *       3. Copy `otp` from this response → use in `/auth/verifyOTP`
  *
- *       **How to test:**
- *       1. Register a user → copy `data._id` from the register response
- *       2. Paste it as `userId` below and execute
- *       3. Copy the `otp` from this response → use in `/auth/verifyOTP`
+ *       ⚠️ On Render free tier first call may take 30–60 sec. Please wait.
  *     tags: [Auth]
+ *     x-timeout: 120000
  *     requestBody:
  *       required: true
  *       content:
@@ -242,7 +249,7 @@ router.post('/verifyOTP', verifyOTP)
  *               role:
  *                 type: string
  *                 enum: [customer, seller, admin]
- *                 description: Optional — auto-detected if omitted
+ *                 description: Optional — auto-detected
  *                 default: customer
  *                 example: customer
  *     responses:
@@ -261,14 +268,14 @@ router.post('/verifyOTP', verifyOTP)
  *                   example: A new OTP has been sent to your email.
  *                 otp:
  *                   type: string
- *                   description: DEV only — copy this for verifyOTP
+ *                   description: DEV only — copy into verifyOTP
  *                   example: "297289"
  *       400:
  *         description: Missing userId / Invalid ObjectId
  *       404:
  *         description: No account found with this ID
  *       500:
- *         description: Email sending failed
+ *         description: Email sending failed — check EMAIL_USER and EMAIL_PASS env vars on Render
  */
 router.post('/resendOTP', resendOTP)
 
@@ -276,11 +283,15 @@ router.post('/resendOTP', resendOTP)
  * @swagger
  * /auth/initiateManualVerification:
  *   post:
- *     summary: Initiate manual verification (send OTP by email)
+ *     summary: Send OTP to unverified account by email
  *     description: |
- *       Sends a verification OTP to an existing but unverified account.
- *       Useful if the user missed the initial registration OTP.
+ *       Use this if user missed the OTP during registration.
+ *       **How to use:**
+ *       1. Enter registered email → Execute
+ *       2. Copy `data.userId` and `otp` from response
+ *       3. Go to `/auth/verifyOTP` → paste both
  *     tags: [Auth]
+ *     x-timeout: 120000
  *     requestBody:
  *       required: true
  *       content:
@@ -299,9 +310,7 @@ router.post('/resendOTP', resendOTP)
  *                 example: customer
  *     responses:
  *       200:
- *         description: |
- *           Verification OTP sent.
- *           **DEV mode:** Response contains `otp` and `data.userId` — use both in `/auth/verifyOTP`.
+ *         description: OTP sent to email.
  *         content:
  *           application/json:
  *             schema:
@@ -327,7 +336,7 @@ router.post('/resendOTP', resendOTP)
  *                   description: DEV only
  *                   example: "391047"
  *       400:
- *         description: Already verified or missing email
+ *         description: Email already verified / missing email
  *       404:
  *         description: No account found with this email
  */
@@ -360,7 +369,7 @@ router.post('/initiateManualVerification', initiateManualVerification)
  *                 example: customer
  *     responses:
  *       200:
- *         description: Login successful — JWT token returned in cookie and response body
+ *         description: Login successful — JWT token in cookie + response body
  *       401:
  *         description: Invalid email or password
  *       403:
@@ -372,7 +381,7 @@ router.post('/login', login)
  * @swagger
  * /auth/changePassword:
  *   post:
- *     summary: Change password for logged-in user
+ *     summary: Change password (logged-in user only)
  *     tags: [Auth]
  *     security:
  *       - bearerAuth: []
@@ -397,7 +406,7 @@ router.post('/login', login)
  *       200:
  *         description: Password changed successfully
  *       401:
- *         description: Current password is incorrect
+ *         description: Current password is incorrect / Not authenticated
  */
 router.post('/changePassword', protect, changePassword)
 
@@ -407,14 +416,14 @@ router.post('/changePassword', protect, changePassword)
  *   post:
  *     summary: Send password reset OTP to email
  *     description: |
- *       Sends a 6-digit reset OTP to the user's registered email.
- *       Auto-detects user type (customer/seller/admin) from email — no role needed.
- *
- *       **How to test:**
- *       1. Enter your registered email below and execute
+ *       **How to use:**
+ *       1. Enter your registered email → Execute
  *       2. Copy the `otp` from this response
  *       3. Go to `/auth/resetPassword` → paste email + otp + new passwords
+ *
+ *       ⚠️ On Render free tier first call may take 30–60 sec. Please wait.
  *     tags: [Auth]
+ *     x-timeout: 120000
  *     requestBody:
  *       required: true
  *       content:
@@ -428,7 +437,7 @@ router.post('/changePassword', protect, changePassword)
  *                 example: sanket@gmail.com
  *     responses:
  *       200:
- *         description: Password reset OTP sent successfully.
+ *         description: Reset OTP sent to email.
  *         content:
  *           application/json:
  *             schema:
@@ -442,7 +451,7 @@ router.post('/changePassword', protect, changePassword)
  *                   example: A password reset code has been sent to your email.
  *                 otp:
  *                   type: string
- *                   description: DEV only — copy this for resetPassword
+ *                   description: DEV only — copy into resetPassword
  *                   example: "391047"
  *       404:
  *         description: No account found with this email
@@ -457,14 +466,12 @@ router.post('/forgotPassword', forgotPassword)
  *   post:
  *     summary: Reset password using OTP
  *     description: |
- *       Completes the password reset process.
+ *       **How to use:**
+ *       1. Call `/auth/forgotPassword` with email → copy `otp` from response
+ *       2. Fill all 5 fields below → Execute
+ *       3. Login with new password ✅
  *
- *       **How to test:**
- *       1. Call `/auth/forgotPassword` with your email → copy `otp` from response
- *       2. Fill all fields below and execute
- *       3. Then login with your new password
- *
- *       **Note:** `role` must match the account type (customer / seller / admin).
+ *       ⚠️ `role` must match account type (customer / seller / admin)
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -479,7 +486,7 @@ router.post('/forgotPassword', forgotPassword)
  *                 example: sanket@gmail.com
  *               otp:
  *                 type: string
- *                 description: Copy otp from forgotPassword response
+ *                 description: Copy from forgotPassword response
  *                 example: "391047"
  *               newPassword:
  *                 type: string
@@ -490,12 +497,12 @@ router.post('/forgotPassword', forgotPassword)
  *               role:
  *                 type: string
  *                 enum: [customer, seller, admin]
- *                 description: Must match the account type
+ *                 description: Must match account type
  *                 default: customer
  *                 example: customer
  *     responses:
  *       200:
- *         description: Password reset successfully. You can now login with new password.
+ *         description: Password reset successfully. Login with new password.
  *       400:
  *         description: Invalid OTP / OTP expired / Passwords do not match
  *       404:
@@ -507,13 +514,13 @@ router.post('/resetPassword', resetPassword)
  * @swagger
  * /auth/getMe:
  *   get:
- *     summary: Get currently logged-in user profile
+ *     summary: Get logged-in user profile
  *     tags: [Auth]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: User profile data returned
+ *         description: User profile returned
  *       401:
  *         description: Not authenticated
  *       404:

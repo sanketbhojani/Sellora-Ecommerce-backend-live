@@ -6,17 +6,17 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ─── Single reusable transporter (not recreated on every call) ────────────────
 const transporter = nodemailer.createTransport({
-    service: 'gmail',   // ✅ use service instead of host/port — nodemailer handles it
+    host: 'smtp.gmail.com',   // ✅ explicit host instead of service
+    port: 465,
+    secure: true,
+    family: 4,                // ✅ force IPv4 — fixes ENETUNREACH on Render
     auth: {
         user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,  // must be App Password, not Gmail login password
+        pass: process.env.EMAIL_PASS,
     },
-    pool: true,          // ✅ reuse connections — avoids timeout on Render
+    pool: true,
     maxConnections: 3,
-    rateDelta: 20000,
-    rateLimit: 5,
 });
 
 // ─── Send OTP Email ───────────────────────────────────────────
@@ -36,12 +36,7 @@ const sendOTPEmail = async ({ name, email, otp, role }) => {
         return { success: true };
 
     } catch (error) {
-        console.error('[Email] sendOTPEmail failed:', {
-            message: error.message,
-            code: error.code,
-            EMAIL_USER: process.env.EMAIL_USER ? '✅ set' : '❌ missing',
-            EMAIL_PASS: process.env.EMAIL_PASS ? '✅ set' : '❌ missing',
-        });
+        console.error('[Email] sendOTPEmail failed:', error.message);
         return { success: false, error: error.message };
     }
 };
@@ -63,12 +58,7 @@ const sendPasswordResetEmail = async ({ name, email, otp, role }) => {
         return { success: true };
 
     } catch (error) {
-        console.error('[Email] sendPasswordResetEmail failed:', {
-            message: error.message,
-            code: error.code,
-            EMAIL_USER: process.env.EMAIL_USER ? '✅ set' : '❌ missing',
-            EMAIL_PASS: process.env.EMAIL_PASS ? '✅ set' : '❌ missing',
-        });
+        console.error('[Email] sendPasswordResetEmail failed:', error.message);
         return { success: false, error: error.message };
     }
 };
