@@ -85,8 +85,10 @@ const registerCustomer = async (req, res) => {
         // ✅ Save user first to ensure they are registered
         await newCustomer.save();
 
-        // ✅ Try sending email but don't block the 201 response if it fails
-        const emailRes = await sendOTPEmail({ name, email, otp, role: "Customer" });
+        // ✅ Send email in background to prevent Render timeouts (502 errors)
+        sendOTPEmail({ name, email, otp, role: "Customer" }).catch(err => {
+            console.error("[Email] Background send failed during registration:", err);
+        });
 
         return res.status(201).json({
             success: true,
@@ -97,9 +99,7 @@ const registerCustomer = async (req, res) => {
                 isVerified: newCustomer.isVerified,
                 otp: otp 
             },
-            message: emailRes.success 
-                ? "Registration successful. A verification code has been sent to your email."
-                : "Registration successful, but we couldn't send the email. Please use the OTP shown below to verify your account.",
+            message: "Registration successful. A verification code has been sent to your email. You can also use the OTP provided below.",
         });
 
     } catch (error) {
@@ -155,8 +155,10 @@ const registerSeller = async (req, res) => {
         // ✅ Save seller first
         await newSeller.save();
 
-        // ✅ Try sending email
-        const emailRes = await sendOTPEmail({ name, email, otp, role: "Seller" });
+        // ✅ Send email in background
+        sendOTPEmail({ name, email, otp, role: "Seller" }).catch(err => {
+            console.error("[Email] Seller background send failed:", err);
+        });
 
         return res.status(201).json({
             success: true,
@@ -169,9 +171,7 @@ const registerSeller = async (req, res) => {
                 isApproved: newSeller.isApproved,
                 otp: otp 
             },
-            message: emailRes.success 
-                ? "Seller registered successfully. A verification code has been sent to your email."
-                : "Seller registered successfully, but email delivery failed. Use the OTP below to verify.",
+            message: "Seller registered successfully. Check your email for verification code.",
         });
 
     } catch (error) {
@@ -226,8 +226,10 @@ const registerAdmin = async (req, res) => {
         // ✅ Save admin first
         await newAdmin.save();
 
-        // ✅ Try sending email
-        const emailRes = await sendOTPEmail({ name, email, otp, role: "Admin" });
+        // ✅ Send email in background
+        sendOTPEmail({ name, email, otp, role: "Admin" }).catch(err => {
+            console.error("[Email] Admin background send failed:", err);
+        });
 
         return res.status(201).json({
             success: true,
@@ -238,9 +240,7 @@ const registerAdmin = async (req, res) => {
                 isVerified: newAdmin.isVerified,
                 otp: otp 
             },
-            message: emailRes.success 
-                ? "Admin created successfully. A verification code has been sent to your email."
-                : "Admin created successfully, but email delivery failed. Use the OTP below.",
+            message: "Admin created successfully. Verification code sent to email.",
         });
 
     } catch (error) {
