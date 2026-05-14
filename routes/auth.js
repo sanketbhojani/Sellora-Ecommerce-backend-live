@@ -146,6 +146,9 @@ router.post('/register/registerAdmin',protect,authorizeRoles("admin"),registerAd
  * /auth/verifyOTP:
  *   post:
  *     summary: Verify OTP to activate account
+ *     description: |
+ *       Verifies the 6-digit OTP sent to the user's email during registration.
+ *       **Role detection:** The system automatically identifies the user type based on the `userId`.
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -157,18 +160,21 @@ router.post('/register/registerAdmin',protect,authorizeRoles("admin"),registerAd
  *             properties:
  *               userId:
  *                 type: string
+ *                 description: Unique ID of the user
  *                 example: 664a1b2c3d4e5f6789012345
  *               otp:
  *                 type: string
+ *                 description: 6-digit verification code
  *                 example: "123456"
  *               role:
  *                 type: string
  *                 enum: [customer, seller, admin]
+ *                 description: (Optional) System will auto-detect if omitted.
  *                 default: customer
  *                 example: customer
  *     responses:
  *       200:
- *         description: Email verified successfully
+ *         description: Email verified successfully. JWT token returned in cookie.
  *       400:
  *         description: Invalid OTP / OTP expired / Already verified
  *       404:
@@ -181,6 +187,9 @@ router.post('/verifyOTP',verifyOTP)
  * /auth/resendOTP:
  *   post:
  *     summary: Resend OTP to registered email
+ *     description: |
+ *       Resends a new verification OTP to the user's email.
+ *       **Role detection:** The system automatically identifies the user (Customer/Seller/Admin) based on the `userId`.
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -192,7 +201,46 @@ router.post('/verifyOTP',verifyOTP)
  *             properties:
  *               userId:
  *                 type: string
+ *                 description: Unique ID of the user (from registration response)
  *                 example: 664a1b2c3d4e5f6789012345
+ *               role:
+ *                 type: string
+ *                 enum: [customer, seller, admin]
+ *                 description: (Optional) System will auto-detect if omitted.
+ *                 default: customer
+ *                 example: customer
+ *     responses:
+ *       200:
+ *         description: |
+ *           New OTP sent to email.
+ *           **DEV mode:** The response also contains `otp` at the top level — copy it directly for testing.
+ *       400:
+ *         description: Missing userId / Already verified
+ *       404:
+ *         description: No account found with this ID
+ */
+router.post('/resendOTP',resendOTP)
+
+/**
+ * @swagger
+ * /auth/initiateManualVerification:
+ *   post:
+ *     summary: Initiate manual verification (send OTP)
+ *     description: |
+ *       Sends a verification OTP to an existing but unverified account.
+ *       Useful if the user missed the initial registration OTP.
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email]
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 example: sanket@gmail.com
  *               role:
  *                 type: string
  *                 enum: [customer, seller, admin]
@@ -200,13 +248,14 @@ router.post('/verifyOTP',verifyOTP)
  *                 example: customer
  *     responses:
  *       200:
- *         description: New OTP sent to email
+ *         description: |
+ *           Verification OTP sent to email.
+ *           **DEV mode:** The response also contains `otp` at the top level.
  *       400:
- *         description: Missing userId / Already verified
+ *         description: Already verified or missing email
  *       404:
- *         description: No account found with this ID
+ *         description: No account found with this email
  */
-router.post('/resendOTP',resendOTP)
 router.post('/initiateManualVerification', initiateManualVerification)
 
 /**
@@ -282,6 +331,9 @@ router.post('/changePassword',protect,changePassword)
  * /auth/forgotPassword:
  *   post:
  *     summary: Send password reset OTP to email
+ *     description: |
+ *       Initiates the password reset flow. Sends a 6-digit OTP to the user's registered email.
+ *       **Role detection:** The system automatically identifies the user type based on the email provided.
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -297,11 +349,14 @@ router.post('/changePassword',protect,changePassword)
  *               role:
  *                 type: string
  *                 enum: [customer, seller, admin]
+ *                 description: (Optional) System will auto-detect if omitted.
  *                 default: customer
  *                 example: customer
  *     responses:
  *       200:
- *         description: Password reset OTP sent to email
+ *         description: |
+ *           Password reset OTP sent to email.
+ *           **DEV mode:** The response also contains `otp` at the top level — copy it directly into the resetPassword call.
  *       404:
  *         description: No account found with this email
  */
@@ -312,6 +367,9 @@ router.post('/forgotPassword',forgotPassword)
  * /auth/resetPassword:
  *   post:
  *     summary: Reset password using OTP received in email
+ *     description: |
+ *       Completes the password reset process.
+ *       **Important:** Ensure the `role` matches the account type (customer/seller/admin) for the request to succeed.
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -336,6 +394,7 @@ router.post('/forgotPassword',forgotPassword)
  *               role:
  *                 type: string
  *                 enum: [customer, seller, admin]
+ *                 description: Must match the user's role.
  *                 default: customer
  *                 example: customer
  *     responses:
