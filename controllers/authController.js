@@ -394,11 +394,8 @@ const resendOTP = async (req, res) => {
             });
         }
 
-        const actualRole = detectedRole;
+        const actualRole = user.role || detectedRole || role;
         const { otp, otpExpiry } = generateOTP();
-
-        // ✅ Use user's actual role from DB for template
-        const actualRole = user.role || role;
 
         // ✅ Send email FIRST
         const emailRes = await sendOTPEmail({ 
@@ -609,11 +606,8 @@ const forgotPassword = async (req, res) => {
             });
         }
 
-        const actualRole = detectedRole;
+        const actualRole = user.role || detectedRole || role;
         const { otp, otpExpiry } = generateOTP();
-
-        // ✅ Use user's actual role
-        const actualRole = user.role || role;
 
         // ✅ Send email FIRST
         const emailRes = await sendPasswordResetEmail({ 
@@ -799,11 +793,8 @@ const initiateManualVerification = async (req, res) => {
             });
         }
 
-        const actualRole = detectedRole;
+        const actualRole = user.role || detectedRole || role;
         const { otp, otpExpiry } = generateOTP();
-
-        // ✅ Use actual role
-        const actualRole = user.role || role;
         
         // ✅ Send email FIRST
         const emailRes = await sendOTPEmail({ 
