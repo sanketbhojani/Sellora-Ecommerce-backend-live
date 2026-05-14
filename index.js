@@ -5,29 +5,15 @@ env.config();
 import './config/db.js'
 import router from './routes/router.js';
 import cookieParser from 'cookie-parser';
-import { authLimiter, generalLimiter, helmet,mongoSanitize } from './middlewares/securityMiddleware.js';
+import { authLimiter, generalLimiter, helmet, mongoSanitize } from './middlewares/securityMiddleware.js';
 import errorHandler from './middlewares/errorMiddleware.js';
 import { swaggerDocs } from './config/swagger.js';
-const app = express();
 
-// ✅ CORS — allow React frontends
-// app.use(cors({
-//     origin: [
-//         'http://localhost:5173',
-//         'http://localhost:5174',
-//         'http://localhost:5175',
-//         'http://localhost:5176',
-//         'http://localhost:5177',
-//         'http://localhost:5178',
-//         process.env.FRONTEND_URL, // Allow deployed frontend URL
-//     ].filter(Boolean),
-//     credentials: true,
-//     allowedHeaders: ['Content-Type', 'Authorization', 'x-role'],
-// }));
+const app = express();
 
 // ✅ CORS — allow all origins
 app.use(cors({
-    origin: true,  // allows any origin
+    origin: true,
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization', 'x-role'],
 }));
@@ -36,14 +22,42 @@ app.use(cors({
 // app.use(helmet());
 // app.use(mongoSanitize());
 
-
 app.use(express.json());
 const port = +process.env.PORT || 6666;
-
-
 app.use(cookieParser());
 
-app.use('/api',router);
+// ✅ TEMP DEBUG EMAIL ROUTE — remove after fixing
+app.get('/test-email', async (req, res) => {
+    const nodemailer = (await import('nodemailer')).default;
+    const transporter = nodemailer.createTransport({
+        host: 'smtp.gmail.com',
+        port: 587,
+        secure: false,
+        auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS,
+        },
+    });
+
+    try {
+        await transporter.verify();
+        res.json({
+            success: true,
+            message: 'SMTP works!',
+            user: process.env.EMAIL_USER
+        });
+    } catch (err) {
+        res.json({
+            success: false,
+            error: err.message,
+            code: err.code,
+            user: process.env.EMAIL_USER || 'NOT SET',
+            pass: process.env.EMAIL_PASS ? `SET (${process.env.EMAIL_PASS.length} chars)` : 'NOT SET'
+        });
+    }
+});
+
+app.use('/api', router);
 
 // ✅ Initialize Swagger Docs
 swaggerDocs(app);
@@ -51,8 +65,6 @@ swaggerDocs(app);
 // ✅ Rate limiting
 // app.use("/api", generalLimiter);
 // app.use("/api", authLimiter);
-
-
 
 // ✅ 404 handler
 app.use((req, res) => {
@@ -65,7 +77,6 @@ app.use((req, res) => {
 // ✅ Global error handler — must be last
 app.use(errorHandler);
 
-app.listen(port,()=>{
-    console.log("Server is running on",port);
-    
+app.listen(port, () => {
+    console.log("Server is running on", port);
 })
