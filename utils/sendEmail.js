@@ -9,15 +9,16 @@ const __dirname = path.dirname(__filename);
 const createTransporter = () => {
     return nodemailer.createTransport({
         host: 'smtp.gmail.com',
-        port: 587,          // ✅ 587 works on Render, 465 is often blocked
-        secure: false,      // ✅ false for port 587 (STARTTLS)
+        port: 465,          // ✅ Use 465 (SSL) - more reliable on Render/Cloud
+        secure: true,       // ✅ true for 465
         auth: {
             user: process.env.EMAIL_USER,
             pass: process.env.EMAIL_PASS, // must be Gmail App Password
         },
         tls: {
             rejectUnauthorized: false
-        }
+        },
+        family: 4 // ✅ Force IPv4 to resolve "ENETUNREACH" issues on Render
     });
 };
 
