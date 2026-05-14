@@ -64,12 +64,18 @@ const registerCustomer = async (req, res) => {
             otpExpiry,
         });
 
-        await newCustomer.save();
+        // ✅ Send email FIRST. If it fails, catch block returns error and user is NEVER saved.
+        const emailRes = await sendOTPEmail({ name, email, otp, role: "Customer" });
 
-        // ✅ Send email in background to prevent Render timeouts (502 errors)
-        sendOTPEmail({ name, email, otp, role: "Customer" }).catch(err => {
-            console.error("[Email] Background send failed:", err);
-        });
+        if (!emailRes.success) {
+            return res.status(500).json({
+                success: false,
+                message: `Failed to send verification email: ${emailRes.error}. Registration cancelled.`,
+            });
+        }
+
+        // ✅ Save only after successful email
+        await newCustomer.save();
 
         return res.status(201).json({
             success: true,
@@ -78,10 +84,9 @@ const registerCustomer = async (req, res) => {
                 name: newCustomer.name,
                 email: newCustomer.email,
                 isVerified: newCustomer.isVerified,
-                // ✅ Always include OTP for developers/testing since we're not awaiting email result
                 otp: otp 
             },
-            message: "Registration successful. A verification code has been sent to your email. Check your inbox.",
+            message: "Registration successful. A verification code has been sent to your email.",
         });
 
     } catch (error) {
@@ -134,12 +139,18 @@ const registerSeller = async (req, res) => {
             otpExpiry,
         });
 
-        await newSeller.save();
+        // ✅ Send email FIRST
+        const emailRes = await sendOTPEmail({ name, email, otp, role: "Seller" });
 
-        // ✅ Background send to prevent timeouts
-        sendOTPEmail({ name, email, otp, role: "Seller" }).catch(err => {
-            console.error("[Email] Background send failed:", err);
-        });
+        if (!emailRes.success) {
+            return res.status(500).json({
+                success: false,
+                message: `Failed to send verification email: ${emailRes.error}. Registration cancelled.`,
+            });
+        }
+
+        // ✅ Save only after successful email
+        await newSeller.save();
 
         return res.status(201).json({
             success: true,
@@ -150,10 +161,9 @@ const registerSeller = async (req, res) => {
                 shopName: newSeller.shopName,
                 isVerified: newSeller.isVerified,
                 isApproved: newSeller.isApproved,
-                // ✅ Always include OTP for testing
                 otp: otp 
             },
-            message: "Seller registered successfully. A verification code has been sent to your email. Check your inbox.",
+            message: "Seller registered successfully. A verification code has been sent to your email.",
         });
 
     } catch (error) {
@@ -205,12 +215,18 @@ const registerAdmin = async (req, res) => {
             otpExpiry,
         });
 
-        await newAdmin.save();
+        // ✅ Send email FIRST
+        const emailRes = await sendOTPEmail({ name, email, otp, role: "Admin" });
 
-        // ✅ Background send to prevent timeouts
-        sendOTPEmail({ name, email, otp, role: "Admin" }).catch(err => {
-            console.error("[Email] Background send failed:", err);
-        });
+        if (!emailRes.success) {
+            return res.status(500).json({
+                success: false,
+                message: `Failed to send verification email: ${emailRes.error}. Admin creation cancelled.`,
+            });
+        }
+
+        // ✅ Save only after successful email
+        await newAdmin.save();
 
         return res.status(201).json({
             success: true,
@@ -219,7 +235,6 @@ const registerAdmin = async (req, res) => {
                 name: newAdmin.name,
                 email: newAdmin.email,
                 isVerified: newAdmin.isVerified,
-                // ✅ Always include OTP for testing
                 otp: otp 
             },
             message: "Admin created successfully. A verification code has been sent to your email.",
@@ -370,14 +385,11 @@ const resendOTP = async (req, res) => {
         }
 
         const { otp, otpExpiry } = generateOTP();
-        user.otp = otp;
-        user.otpExpiry = otpExpiry;
-        await user.save();
 
         // ✅ Use user's actual role from DB for template
         const actualRole = user.role || role;
 
-        // ✅ Await email and check result
+        // ✅ Send email FIRST
         const emailRes = await sendOTPEmail({ 
             name: user.name, 
             email: user.email, 
@@ -388,16 +400,20 @@ const resendOTP = async (req, res) => {
         if (!emailRes.success) {
             return res.status(500).json({
                 success: false,
-                message: `Failed to send OTP email: ${emailRes.error}. Please check your SMTP configuration.`,
-                // ✅ Still return OTP so they can continue testing even if email fails
+                message: `Failed to send OTP email: ${emailRes.error}. User data not updated.`,
                 otp: otp 
             });
         }
 
+        // ✅ Update and Save ONLY after successful email
+        user.otp = otp;
+        user.otpExpiry = otpExpiry;
+        await user.save();
+
         return res.status(200).json({
             success: true,
             message: "A new OTP has been sent to your email.",
-            otp: otp // ✅ Always return for easier testing in Swagger/Dev
+            otp: otp 
         });
 
     } catch (error) {
@@ -583,14 +599,11 @@ const forgotPassword = async (req, res) => {
         }
 
         const { otp, otpExpiry } = generateOTP();
-        user.otp = otp;
-        user.otpExpiry = otpExpiry;
-        await user.save();
 
         // ✅ Use user's actual role
         const actualRole = user.role || role;
 
-        // ✅ Await email
+        // ✅ Send email FIRST
         const emailRes = await sendPasswordResetEmail({ 
             name: user.name, 
             email: user.email, 
@@ -601,10 +614,15 @@ const forgotPassword = async (req, res) => {
         if (!emailRes.success) {
             return res.status(500).json({
                 success: false,
-                message: `Failed to send reset email: ${emailRes.error}`,
+                message: `Failed to send reset email: ${emailRes.error}. Data not updated.`,
                 otp: otp
             });
         }
+
+        // ✅ Update and Save only after success
+        user.otp = otp;
+        user.otpExpiry = otpExpiry;
+        await user.save();
 
         return res.status(200).json({
             success: true,
@@ -770,13 +788,11 @@ const initiateManualVerification = async (req, res) => {
         }
 
         const { otp, otpExpiry } = generateOTP();
-        user.otp = otp;
-        user.otpExpiry = otpExpiry;
-        await user.save();
 
         // ✅ Use actual role
         const actualRole = user.role || role;
         
+        // ✅ Send email FIRST
         const emailRes = await sendOTPEmail({ 
             name: user.name, 
             email: user.email, 
@@ -787,11 +803,15 @@ const initiateManualVerification = async (req, res) => {
         if (!emailRes.success) {
             return res.status(500).json({
                 success: false,
-                message: `Failed to send verification email: ${emailRes.error}`,
+                message: `Failed to send verification email: ${emailRes.error}. Data not updated.`,
                 otp: otp,
-                data: { userId: user._id, role: actualRole }
             });
         }
+
+        // ✅ Update and Save only after success
+        user.otp = otp;
+        user.otpExpiry = otpExpiry;
+        await user.save();
 
         return res.status(200).json({
             success: true,
