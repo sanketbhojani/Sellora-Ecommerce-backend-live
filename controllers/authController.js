@@ -538,6 +538,83 @@ const initiateManualVerification = async (req, res) => {
     }
 };
 
+// ─── FORGOT PASSWORD 2 (Role Specific) ───────────────────────
+
+const forgetpassword2 = async (req, res) => {
+    try {
+        const { email, role } = req.body;
+
+        if (!email || !role) {
+            return res.status(400).json({ success: false, message: "Please provide email and role" });
+        }
+
+        const Model = getModelByRole(role);
+        const user = await Model.findOne({ email });
+
+        if (!user) {
+            return res.status(404).json({ success: false, message: `No ${role} account found with this email` });
+        }
+
+        const { otp, otpExpiry } = generateOTP();
+
+        user.otp = otp;
+        user.otpExpiry = otpExpiry;
+        await user.save();
+
+        // Email in background
+        sendPasswordResetEmail({ name: user.name, email: user.email, otp, role }).catch(err =>
+            console.error("[Email] forgetpassword2 failed:", err.message)
+        );
+
+        return res.status(200).json({
+            success: true,
+            message: `A password reset code has been sent to your ${role} email.`,
+            otp, // DEV only
+        });
+
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// ─── RESET PASSWORD 2 ─────────────────────────────────────────
+
+const resetpassword2 = async (req, res) => {
+    try {
+        const { email, role, otp, newPassword, confirmNewPassword } = req.body;
+
+        if (!email || !role || !otp || !newPassword || !confirmNewPassword) {
+            return res.status(400).json({ success: false, message: "Please provide email, role, otp, new password and confirm new password" });
+        }
+        if (newPassword !== confirmNewPassword) {
+            return res.status(400).json({ success: false, message: "New password and confirm new password do not match" });
+        }
+
+        const Model = getModelByRole(role);
+        const user = await Model.findOne({ email }).select("+otp +otpExpiry");
+
+        if (!user) {
+            return res.status(404).json({ success: false, message: "No account found" });
+        }
+        if (String(otp) !== String(user.otp)) {
+            return res.status(400).json({ success: false, message: "Invalid OTP code" });
+        }
+        if (user.otpExpiry < new Date()) {
+            return res.status(400).json({ success: false, message: "OTP has expired" });
+        }
+
+        user.password = await bcrypt.hash(newPassword, 10);
+        user.otp = null;
+        user.otpExpiry = null;
+        await user.save();
+
+        return res.status(200).json({ success: true, message: "Password reset successfully. You can now login." });
+
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 export {
     registerCustomer,
     registerSeller,
@@ -550,5 +627,7 @@ export {
     resetPassword,
     getMe,
     logout,
-    initiateManualVerification
+    initiateManualVerification,
+    forgetpassword2,
+    resetpassword2
 };

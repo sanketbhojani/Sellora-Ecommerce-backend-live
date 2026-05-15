@@ -1,5 +1,5 @@
 import express from 'express'
-import { changePassword, forgotPassword, getMe, initiateManualVerification, login, logout, registerAdmin, registerCustomer, registerSeller, resendOTP, resetPassword, verifyOTP } from '../controllers/authController.js';
+import { changePassword, forgetpassword2, forgotPassword, getMe, initiateManualVerification, login, logout, registerAdmin, registerCustomer, registerSeller, resendOTP, resetPassword, resetpassword2, verifyOTP } from '../controllers/authController.js';
 import { authorizeRoles, protect } from '../middlewares/authMiddleware.js';
 
 const router = express.Router();
@@ -509,6 +509,90 @@ router.post('/forgotPassword', forgotPassword)
  *         description: No account found with this email
  */
 router.post('/resetPassword', resetPassword)
+
+/**
+ * @swagger
+ * /auth/forgetpassword2:
+ *   post:
+ *     summary: Send password reset OTP to email (with explicit role)
+ *     tags: [Auth]
+ *     x-timeout: 120000
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email, role]
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 example: sanket@gmail.com
+ *               role:
+ *                 type: string
+ *                 enum: [customer, seller, admin]
+ *                 example: customer
+ *     responses:
+ *       200:
+ *         description: Reset OTP sent to email.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 otp:
+ *                   type: string
+ *                   description: DEV only
+ *       404:
+ *         description: No account found
+ *       500:
+ *         description: Server error
+ */
+router.post('/forgetpassword2', forgetpassword2)
+
+/**
+ * @swagger
+ * /auth/resetpassword2:
+ *   post:
+ *     summary: Reset password using OTP (Version 2)
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email, role, otp, newPassword, confirmNewPassword]
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 example: sanket@gmail.com
+ *               role:
+ *                 type: string
+ *                 enum: [customer, seller, admin]
+ *                 example: customer
+ *               otp:
+ *                 type: string
+ *                 example: "123456"
+ *               newPassword:
+ *                 type: string
+ *                 example: newPass123
+ *               confirmNewPassword:
+ *                 type: string
+ *                 example: newPass123
+ *     responses:
+ *       200:
+ *         description: Password reset successfully.
+ *       400:
+ *         description: Invalid OTP / Passwords do not match
+ *       404:
+ *         description: No account found
+ */
+router.post('/resetpassword2', resetpassword2)
 
 /**
  * @swagger

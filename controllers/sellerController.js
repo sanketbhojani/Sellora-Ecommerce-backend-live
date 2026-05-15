@@ -285,29 +285,25 @@ const getSellerDashboard = async (req, res) => {
         return res.status(200).json({
             success: true,
             data: {
-                products: {
-                    total: totalProducts,
-                    active: activeProducts,
-                    pending: pendingProducts,
-                    rejected: rejectedProducts,
+                stats: {
+                    seller: await Seller.findById(sellerId).select("name shopName avatar"),
+                    totalProducts,
+                    activeProducts,
+                    pendingProducts,
+                    rejectedProducts,
+                    totalOrders,
+                    placedOrders,
+                    confirmedOrders,
+                    processingOrders,
+                    shippedOrders,
+                    deliveredOrders,
+                    cancelledOrders,
+                    revenueData, // frontend expects revenueData?.[0]?.totalRevenue
+                    pendingPayments,
+                    paidPayments,
+                    returnRequests,
                 },
-                orders: {
-                    total: totalOrders,
-                    placed: placedOrders,
-                    confirmed: confirmedOrders,
-                    processing: processingOrders,
-                    shipped: shippedOrders,
-                    delivered: deliveredOrders,
-                    cancelled: cancelledOrders,
-                },
-                payments: {
-                    pending: pendingPayments,   // ✅ pending payments
-                    paid: paidPayments,          // ✅ paid payments
-                },
-                returns: {
-                    pending: returnRequests,     // ✅ pending return requests
-                },
-                totalRevenue: revenueData[0]?.totalRevenue || 0,
+                totalRevenue: revenueData[0]?.totalRevenue || 0, // Fallback
                 totalItemsSold: revenueData[0]?.totalItemsSold || 0,
                 recentOrders,
                 topProducts,
@@ -334,7 +330,8 @@ const getSellerOrders = async (req, res) => {
             paymentStatus,
         } = req.query;
 
-        const filter = { "orderItems.seller": req.user._id };
+        const sellerId = new mongoose.Types.ObjectId(req.user._id);
+        const filter = { "orderItems.seller": sellerId };
         if (orderStatus) filter.orderStatus = orderStatus;
         if (paymentStatus) filter.paymentStatus = paymentStatus;
 
@@ -382,7 +379,7 @@ const getSellerOrderById = async (req, res) => {
 
         const order = await Order.findOne({
             _id: req.params.id,
-            "orderItems.seller": req.user._id,
+            "orderItems.seller": new mongoose.Types.ObjectId(req.user._id),
         })
             .populate("customer", "name email phone")
             .populate("orderItems.product", "name images price category subcategory");
@@ -394,12 +391,45 @@ const getSellerOrderById = async (req, res) => {
             });
         }
 
+        const sellerId = new mongoose.Types.ObjectId(req.user._id);
+        
+        if (!order.seenBySellers.some(id => id.toString() === sellerId.toString())) {
+            order.seenBySellers.push(sellerId);
+            await order.save();
+        }
+
         return res.status(200).json({
             success: true,
             data: order,
             message: "Order fetched successfully",
         });
 
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error.message,
+        });
+    }
+};
+
+// ─── GET UNREAD ORDERS COUNT ─────────────────────────────────
+
+const getUnreadOrdersCount = async (req, res) => {
+    try {
+        const sellerId = new mongoose.Types.ObjectId(req.user._id);
+        const unreadOrders = await Order.find({
+            "orderItems.seller": sellerId,
+            seenBySellers: { $ne: sellerId }
+        }).sort({ createdAt: -1 })
+          .populate("customer", "name")
+          .select("createdAt customer orderItems totalPrice");
+
+        return res.status(200).json({
+            success: true,
+            count: unreadOrders.length,
+            unreadOrders,
+            message: "Unread orders count fetched successfully",
+        });
     } catch (error) {
         return res.status(500).json({
             success: false,
@@ -446,7 +476,7 @@ const updateOrderStatus = async (req, res) => {
 
         const order = await Order.findOne({
             _id: req.params.id,
-            "orderItems.seller": req.user._id,
+            "orderItems.seller": new mongoose.Types.ObjectId(req.user._id),
         });
 
         if (!order) {
@@ -909,4 +939,5 @@ export {
     getSellerReviews,
     getPublicSellerProfile,
     getPublicSellerProducts,
+    getUnreadOrdersCount,
 };

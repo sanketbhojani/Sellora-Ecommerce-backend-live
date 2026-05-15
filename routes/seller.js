@@ -13,6 +13,7 @@ import {
     getSellerReviews,
     getPublicSellerProfile,
     getPublicSellerProducts,
+    getUnreadOrdersCount,
 } from "../controllers/sellerController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 import upload from "../middlewares/uploadMiddleware.js";
@@ -185,6 +186,7 @@ router.get("/getSellerOrderById/:id", getSellerOrderById);
  *         description: Order status updated
  */
 router.post("/updateOrderStatus/:id", updateOrderStatus);
+router.get("/getUnreadOrdersCount", getUnreadOrdersCount);
 
 /**
  * @swagger

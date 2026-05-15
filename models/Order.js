@@ -160,6 +160,11 @@ const orderSchema = new mongoose.Schema({
         type: Date,
         default: null           
     },
+    seenBySellers: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Seller',
+        default: []
+    }],
 
 }, { timestamps: true });
 
