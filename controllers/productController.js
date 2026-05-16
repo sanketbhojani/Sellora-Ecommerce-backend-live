@@ -128,7 +128,7 @@ const addProduct = async (req, res) => {
         return res.status(201).json({
             success: true,
             data: product,
-            message: "Product added successfully. It will be visible after admin approval.",
+            message: "Product added successfully and is now live.",
         });
 
     } catch (error) {
@@ -410,14 +410,7 @@ const updateProduct = async (req, res) => {
             allowedUpdates.images = req.files.map((f) => f.path);
         }
 
-        // ✅ Reset approval if seller updates
-        if (req.user.role === "seller") {
-            allowedUpdates.isApproved = false;
-            allowedUpdates.approvalStatus = "pending";
-            allowedUpdates.approvedAt = null;
-            allowedUpdates.approvedBy = null;
-            allowedUpdates.rejectedReason = "";
-        }
+        // ✅ Approval reset removed as per request - products stay live
 
         const updatedProduct = await Product.findByIdAndUpdate(
             req.params.id,
@@ -436,9 +429,7 @@ const updateProduct = async (req, res) => {
         return res.status(200).json({
             success: true,
             data: updatedProduct,
-            message: req.user.role === "seller"
-                ? "Product updated. Pending admin re-approval."
-                : "Product updated successfully",
+            message: "Product updated successfully",
         });
 
     } catch (error) {
