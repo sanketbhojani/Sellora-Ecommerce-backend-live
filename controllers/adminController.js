@@ -5,6 +5,10 @@ import { Product } from "../models/Product.js";
 import { Order } from "../models/Order.js";
 import { Review } from "../models/Review.js";
 import { Admin } from "../models/Admin.js";
+import { Subcategory } from "../models/Subcategory.js";
+import { v2 as cloudinary } from "cloudinary";
+import { deleteImagesFromCloudinary } from "../utils/cloudinary.js";
+
 
 // ─── DASHBOARD STATS ──────────────────────────────────────────
 
@@ -1089,6 +1093,228 @@ const updateAdmin = async (req, res) => {
     }
 };
 
+// ─── ADMIN PRODUCT CRUD ───────────────────────────────────────
+
+const addProductAdmin = async (req, res) => {
+    try {
+        const {
+            name, description, price,
+            originalPrice, categoryId,
+            subcategoryId, stock, tags,
+            sellerId // Admin can specify a seller or leave it blank (platform product)
+        } = req.body;
+
+        if (!name || !description || !price || !categoryId || !subcategoryId || !stock) {
+            if (req.files && req.files.length > 0) {
+                await deleteImagesFromCloudinary(req.files.map((f) => f.path));
+            }
+            return res.status(400).json({
+                success: false,
+                message: "Please provide all required fields",
+            });
+        }
+
+        const categoryDoc = await Category.findById(categoryId);
+        if (!categoryDoc) {
+            if (req.files && req.files.length > 0) {
+                await deleteImagesFromCloudinary(req.files.map((f) => f.path));
+            }
+            return res.status(404).json({ success: false, message: "Category not found" });
+        }
+
+        const subcategoryDoc = await Subcategory.findById(subcategoryId);
+        if (!subcategoryDoc) {
+            if (req.files && req.files.length > 0) {
+                await deleteImagesFromCloudinary(req.files.map((f) => f.path));
+            }
+            return res.status(404).json({ success: false, message: "Subcategory not found" });
+        }
+
+        if (subcategoryDoc.category.toString() !== categoryId) {
+            if (req.files && req.files.length > 0) {
+                await deleteImagesFromCloudinary(req.files.map((f) => f.path));
+            }
+            return res.status(400).json({ success: false, message: "Subcategory does not belong to category" });
+        }
+
+        if (!req.files || req.files.length === 0) {
+            return res.status(400).json({ success: false, message: "Please upload at least one image" });
+        }
+
+        const images = req.files.map((file) => file.path);
+
+        const product = new Product({
+            name,
+            description,
+            price: Number(price),
+            originalPrice: originalPrice ? Number(originalPrice) : Number(price),
+            images,
+            category: categoryId,
+            subcategory: subcategoryId,
+            stock: Number(stock),
+            tags: tags ? tags.split(",").map((t) => t.trim().toLowerCase()) : [],
+            seller: sellerId || req.user._id, // Default to current admin if no seller specified
+            isApproved: true,
+            approvalStatus: "approved",
+            approvedAt: new Date(),
+            approvedBy: req.user._id,
+            isActive: true
+        });
+
+        await product.save();
+
+        if (sellerId) {
+            await Seller.findByIdAndUpdate(sellerId, { $inc: { totalProducts: 1 } });
+        }
+
+        return res.status(201).json({
+            success: true,
+            data: product,
+            message: "Product created successfully by Admin",
+        });
+
+    } catch (error) {
+        if (req.files && req.files.length > 0) {
+            await deleteImagesFromCloudinary(req.files.map((f) => f.path));
+        }
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+const updateProductAdmin = async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: "Invalid product ID" });
+        }
+
+        const product = await Product.findById(id);
+        if (!product) {
+            return res.status(404).json({ success: false, message: "Product not found" });
+        }
+
+        const updates = { ...req.body };
+        
+        // Handle numbers
+        if (updates.price) updates.price = Number(updates.price);
+        if (updates.originalPrice) updates.originalPrice = Number(updates.originalPrice);
+        if (updates.stock) updates.stock = Number(updates.stock);
+        
+        // Handle tags
+        if (updates.tags && typeof updates.tags === "string") {
+            updates.tags = updates.tags.split(",").map((t) => t.trim().toLowerCase());
+        }
+
+        // Handle category/subcategory validation if provided
+        if (updates.categoryId) {
+            const categoryDoc = await Category.findById(updates.categoryId);
+            if (!categoryDoc) return res.status(404).json({ success: false, message: "Category not found" });
+            updates.category = updates.categoryId;
+        }
+
+        if (updates.subcategoryId) {
+            const subcategoryDoc = await Subcategory.findById(updates.subcategoryId);
+            if (!subcategoryDoc) return res.status(404).json({ success: false, message: "Subcategory not found" });
+            updates.subcategory = updates.subcategoryId;
+            
+            const catId = updates.category || product.category;
+            if (subcategoryDoc.category.toString() !== catId.toString()) {
+                return res.status(400).json({ success: false, message: "Subcategory mismatch" });
+            }
+        }
+
+        // Handle images if any
+        let oldImages = [];
+        if (req.files && req.files.length > 0) {
+            oldImages = [...product.images];
+            updates.images = req.files.map((f) => f.path);
+        }
+
+        const updatedProduct = await Product.findByIdAndUpdate(id, { $set: updates }, { new: true })
+            .populate("category", "name")
+            .populate("subcategory", "name")
+            .populate("seller", "name shopName");
+
+        // Delete old images after success
+        if (oldImages.length > 0) {
+            await deleteImagesFromCloudinary(oldImages);
+        }
+
+        return res.status(200).json({
+            success: true,
+            data: updatedProduct,
+            message: "Product updated successfully by Admin",
+        });
+
+    } catch (error) {
+        if (req.files && req.files.length > 0) {
+            await deleteImagesFromCloudinary(req.files.map((f) => f.path));
+        }
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+const deleteProductAdmin = async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: "Invalid product ID" });
+        }
+
+        const product = await Product.findById(id);
+        if (!product) {
+            return res.status(404).json({ success: false, message: "Product not found" });
+        }
+
+        // Delete images from Cloudinary
+        if (product.images && product.images.length > 0) {
+            await deleteImagesFromCloudinary(product.images);
+        }
+        
+        await Product.findByIdAndDelete(id);
+
+        if (product.seller) {
+            await Seller.findByIdAndUpdate(product.seller, { $inc: { totalProducts: -1 } });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Product deleted successfully by Admin",
+        });
+
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+const getProductByIdAdmin = async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: "Invalid product ID" });
+        }
+
+        const product = await Product.findById(id)
+            .populate("category")
+            .populate("subcategory")
+            .populate("seller", "name email shopName phone")
+            .populate("approvedBy", "name email");
+
+        if (!product) {
+            return res.status(404).json({ success: false, message: "Product not found" });
+        }
+
+        return res.status(200).json({
+            success: true,
+            data: product,
+            message: "Product details fetched successfully",
+        });
+
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 export {
     getDashboardStats,
     getAllCustomers,
@@ -1110,4 +1336,8 @@ export {
     getAllAdmins,
     deleteAdmin,
     updateAdmin,
+    addProductAdmin,
+    updateProductAdmin,
+    deleteProductAdmin,
+    getProductByIdAdmin,
 };

@@ -66,6 +66,26 @@ const productSchema = new mongoose.Schema({
     isActive: {
         type: Boolean,
         default: true
+    },
+    isApproved: {
+        type: Boolean,
+        default: false
+    },
+    approvalStatus: {
+        type: String,
+        enum: ["pending", "approved", "rejected"],
+        default: "pending"
+    },
+    approvedAt: {
+        type: Date
+    },
+    approvedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Admin"
+    },
+    rejectedReason: {
+        type: String,
+        default: ""
     }
 }, { timestamps: true });
 

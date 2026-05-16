@@ -4,31 +4,12 @@ import { Category } from "../models/Category.js";
 import { Subcategory } from "../models/Subcategory.js";
 import { v2 as cloudinary } from "cloudinary";
 import { Seller } from "../models/Seller.js";
+import { deleteImagesFromCloudinary } from "../utils/cloudinary.js";
+
 
 // ─── Cloudinary Helpers ───────────────────────────────────────
 
-const getPublicIdFromUrl = (url) => {
-    try {
-        const parts = url.split("/upload/");
-        const afterUpload = parts[1];
-        const withoutVersion = afterUpload.replace(/^v\d+\//, "");
-        return withoutVersion.replace(/\.[^/.]+$/, "");
-    } catch (err) {
-        console.error("Failed to extract public ID from:", url);
-        return null;
-    }
-};
-
-const deleteImagesFromCloudinary = async (images = []) => {
-    if (images.length === 0) return;
-    await Promise.all(
-        images.map((imageUrl) => {
-            const publicId = getPublicIdFromUrl(imageUrl);
-            if (!publicId) return Promise.resolve();
-            return cloudinary.uploader.destroy(publicId);
-        })
-    );
-};
+// Cloudinary helpers moved to utils/cloudinary.js
 
 // ─── ADD PRODUCT ──────────────────────────────────────────────
 

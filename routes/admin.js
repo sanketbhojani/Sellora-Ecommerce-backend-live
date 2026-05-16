@@ -20,9 +20,16 @@ import {
     getAllAdmins,
     deleteAdmin,
     updateAdmin,
+    addProductAdmin,
+    updateProductAdmin,
+    deleteProductAdmin,
+    getProductByIdAdmin,
 } from "../controllers/adminController.js";
 import { registerAdmin } from "../controllers/authController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
+import upload from '../middlewares/uploadMiddleware.js';
+import validate from '../middlewares/validateMiddleware.js';
+import { createProductAdminSchema, updateProductSchema } from '../validators/productValidator.js';
 
 const router = express.Router();
 
@@ -294,6 +301,140 @@ router.post("/activeProduct/:id", activeProduct);
  *         description: Product deactivated
  */
 router.post("/deactiveProduct/:id", deactiveProduct);
+
+/**
+ * @swagger
+ * /admin/product/add:
+ *   post:
+ *     summary: Add a new product (Admin)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required: [name, description, price, categoryId, subcategoryId, stock, images]
+ *             properties:
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               price:
+ *                 type: number
+ *               originalPrice:
+ *                 type: number
+ *               categoryId:
+ *                 type: string
+ *               subcategoryId:
+ *                 type: string
+ *               stock:
+ *                 type: number
+ *               tags:
+ *                 type: string
+ *               sellerId:
+ *                 type: string
+ *                 description: Optional seller ID to associate product with
+ *               images:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: binary
+ *     responses:
+ *       201:
+ *         description: Product created successfully
+ */
+router.post("/product/add", upload.array("images", 5), validate(createProductAdminSchema), addProductAdmin);
+
+/**
+ * @swagger
+ * /admin/product/update/{id}:
+ *   post:
+ *     summary: Update any product (Admin)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               price:
+ *                 type: number
+ *               originalPrice:
+ *                 type: number
+ *               stock:
+ *                 type: number
+ *               tags:
+ *                 type: string
+ *               categoryId:
+ *                 type: string
+ *               subcategoryId:
+ *                 type: string
+ *               images:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: binary
+ *     responses:
+ *       200:
+ *         description: Product updated successfully
+ */
+router.post("/product/update/:id", upload.array("images", 5), validate(updateProductSchema), updateProductAdmin);
+
+/**
+ * @swagger
+ * /admin/product/delete/{id}:
+ *   delete:
+ *     summary: Delete any product (Admin)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Product deleted successfully
+ */
+router.delete("/product/delete/:id", deleteProductAdmin);
+
+/**
+ * @swagger
+ * /admin/product/{id}:
+ *   get:
+ *     summary: Get detailed product info (Admin)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Product details
+ */
+router.get("/product/:id", getProductByIdAdmin);
+
 
 /**
  * @swagger
