@@ -169,6 +169,7 @@ const createProductAdminSchema = createProductSchema.keys({
     sellerId: Joi.string()
         .pattern(objectIdPattern)
         .optional()
+        .allow("")
         .messages({
             "string.pattern.base": "Seller ID must be a valid MongoDB ObjectId",
         }),
