@@ -23,6 +23,8 @@ import {
     addProductAdmin,
     updateProductAdmin,
     deleteProductAdmin,
+    softDeleteProductAdmin,
+    toggleProductStatusAdmin,
     getProductByIdAdmin,
 } from "../controllers/adminController.js";
 import { registerAdmin } from "../controllers/authController.js";
@@ -399,7 +401,7 @@ router.post("/product/update/:id", upload.array("images", 5), validate(updatePro
  * @swagger
  * /admin/product/delete/{id}:
  *   delete:
- *     summary: Delete any product (Admin)
+ *     summary: Hard delete any product (Admin)
  *     tags: [Admin]
  *     security:
  *       - bearerAuth: []
@@ -411,9 +413,57 @@ router.post("/product/update/:id", upload.array("images", 5), validate(updatePro
  *           type: string
  *     responses:
  *       200:
- *         description: Product deleted successfully
+ *         description: Product hard deleted successfully
+ *       404:
+ *         description: Product not found
  */
 router.delete("/product/delete/:id", deleteProductAdmin);
+
+/**
+ * @swagger
+ * /admin/product/soft-delete/{id}:
+ *   delete:
+ *     summary: Soft delete any product (Admin)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Product soft deleted successfully
+ *       400:
+ *         description: Product is already soft deleted
+ *       404:
+ *         description: Product not found
+ */
+router.delete("/product/soft-delete/:id", softDeleteProductAdmin);
+
+/**
+ * @swagger
+ * /admin/product/toggle-status/{id}:
+ *   post:
+ *     summary: Toggle active/inactive status of any product (Admin)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Product status toggled successfully
+ *       404:
+ *         description: Product not found
+ */
+router.post("/product/toggle-status/:id", toggleProductStatusAdmin);
 
 /**
  * @swagger

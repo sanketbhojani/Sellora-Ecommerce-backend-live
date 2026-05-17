@@ -411,10 +411,11 @@ const getAllProductsAdmin = async (req, res) => {
             search,
         } = req.query;
 
-        const filter = {};
+        const filter = { isDeleted: false };
 
         if (approvalStatus) filter.approvalStatus = approvalStatus;
         if (isActive !== undefined) filter.isActive = isActive === "true";
+        if (req.query.isDeleted !== undefined) filter.isDeleted = req.query.isDeleted === "true";
 
         if (search && search.trim()) {
             filter.$text = { $search: search.trim() };
@@ -1315,6 +1316,67 @@ const getProductByIdAdmin = async (req, res) => {
     }
 };
 
+const toggleProductStatusAdmin = async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: "Invalid product ID" });
+        }
+
+        const product = await Product.findById(id);
+        if (!product) {
+            return res.status(404).json({ success: false, message: "Product not found" });
+        }
+
+        product.isActive = !product.isActive;
+        await product.save();
+
+        return res.status(200).json({
+            success: true,
+            data: product,
+            message: `Product ${product.isActive ? "activated" : "deactivated"} successfully`,
+        });
+
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+const softDeleteProductAdmin = async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: "Invalid product ID" });
+        }
+
+        const product = await Product.findById(id);
+        if (!product) {
+            return res.status(404).json({ success: false, message: "Product not found" });
+        }
+
+        if (product.isDeleted) {
+            return res.status(400).json({ success: false, message: "Product is already soft deleted" });
+        }
+
+        product.isDeleted = true;
+        product.deletedAt = new Date();
+        product.isActive = false; // usually deactivated when soft deleted
+        await product.save();
+
+        if (product.seller) {
+            await Seller.findByIdAndUpdate(product.seller, { $inc: { totalProducts: -1 } });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Product soft deleted successfully",
+        });
+
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 export {
     getDashboardStats,
     getAllCustomers,
@@ -1339,5 +1401,7 @@ export {
     addProductAdmin,
     updateProductAdmin,
     deleteProductAdmin,
+    softDeleteProductAdmin,
+    toggleProductStatusAdmin,
     getProductByIdAdmin,
 };
