@@ -15,6 +15,30 @@ import { deleteImagesFromCloudinary } from "../utils/cloudinary.js";
 
 const getDashboardStats = async (req, res) => {
     try {
+        const isSuperAdmin = req.user && req.user.isSuperAdmin;
+        
+        const productFilter = !isSuperAdmin ? { seller: req.user._id } : {};
+        const orderFilter = !isSuperAdmin ? { "orderItems.seller": req.user._id } : {};
+
+        const revenuePipeline = [
+            { $match: { paymentStatus: "paid", ...orderFilter } }
+        ];
+
+        if (!isSuperAdmin) {
+            revenuePipeline.push({ $unwind: "$orderItems" });
+            revenuePipeline.push({ $match: { "orderItems.seller": req.user._id } });
+            revenuePipeline.push({
+                $group: {
+                    _id: null,
+                    total: { $sum: { $multiply: ["$orderItems.price", "$orderItems.quantity"] } }
+                }
+            });
+        } else {
+            revenuePipeline.push({
+                $group: { _id: null, total: { $sum: "$totalPrice" } }
+            });
+        }
+
         const [
             totalCustomers,
             totalSellers,
@@ -35,21 +59,18 @@ const getDashboardStats = async (req, res) => {
             Customer.countDocuments(),
             Seller.countDocuments(),
             Seller.countDocuments({ isApproved: true }),
-            Seller.countDocuments({ isApproved: false, isVerified: true }),
-            Product.countDocuments(),
-            Product.countDocuments({ isActive: true, approvalStatus: "approved" }),
-            Product.countDocuments({ approvalStatus: "pending" }),
-            Order.countDocuments(),
-            Order.countDocuments({ orderStatus: "placed" }),
-            Order.countDocuments({ orderStatus: "confirmed" }),
-            Order.countDocuments({ orderStatus: "processing" }),
-            Order.countDocuments({ orderStatus: "shipped" }),
-            Order.countDocuments({ orderStatus: "delivered" }),
-            Order.countDocuments({ orderStatus: "cancelled" }),
-            Order.aggregate([
-                { $match: { paymentStatus: "paid" } },
-                { $group: { _id: null, total: { $sum: "$totalPrice" } } },
-            ]),
+            Seller.countDocuments({ isApproved: false }),
+            Product.countDocuments(productFilter),
+            Product.countDocuments({ ...productFilter, isActive: true, approvalStatus: "approved" }),
+            Product.countDocuments({ ...productFilter, approvalStatus: "pending" }),
+            Order.countDocuments(orderFilter),
+            Order.countDocuments({ ...orderFilter, orderStatus: "placed" }),
+            Order.countDocuments({ ...orderFilter, orderStatus: "confirmed" }),
+            Order.countDocuments({ ...orderFilter, orderStatus: "processing" }),
+            Order.countDocuments({ ...orderFilter, orderStatus: "shipped" }),
+            Order.countDocuments({ ...orderFilter, orderStatus: "delivered" }),
+            Order.countDocuments({ ...orderFilter, orderStatus: "cancelled" }),
+            Order.aggregate(revenuePipeline),
         ]);
 
         return res.status(200).json({
@@ -414,6 +435,10 @@ const getAllProductsAdmin = async (req, res) => {
 
         const filter = { isDeleted: false };
 
+        if (!req.user.isSuperAdmin) {
+            filter.seller = req.user._id;
+        }
+
         if (approvalStatus) filter.approvalStatus = approvalStatus;
         if (isActive !== undefined) filter.isActive = isActive === "true";
         if (req.query.isDeleted !== undefined) filter.isDeleted = req.query.isDeleted === "true";
@@ -647,7 +672,30 @@ const getAllOrders = async (req, res) => {
         if (paymentStatus) filter.paymentStatus = paymentStatus;
         if (paymentMethod) filter.paymentMethod = paymentMethod;
 
+        if (!req.user.isSuperAdmin) {
+            filter["orderItems.seller"] = req.user._id;
+        }
+
         const skip = (Number(page) - 1) * Number(limit);
+
+        const revenuePipeline = [
+            { $match: { paymentStatus: "paid", ...filter } }
+        ];
+
+        if (!req.user.isSuperAdmin) {
+            revenuePipeline.push({ $unwind: "$orderItems" });
+            revenuePipeline.push({ $match: { "orderItems.seller": req.user._id } });
+            revenuePipeline.push({
+                $group: {
+                    _id: null,
+                    totalRevenue: { $sum: { $multiply: ["$orderItems.price", "$orderItems.quantity"] } }
+                }
+            });
+        } else {
+            revenuePipeline.push({
+                $group: { _id: null, totalRevenue: { $sum: "$totalPrice" } }
+            });
+        }
 
         const [orders, total, revenueData] = await Promise.all([
             Order.find(filter)
@@ -658,10 +706,7 @@ const getAllOrders = async (req, res) => {
                 .populate("orderItems.product", "name images price")
                 .populate("orderItems.seller", "name shopName"),
             Order.countDocuments(filter),
-            Order.aggregate([
-                { $match: { paymentStatus: "paid" } },
-                { $group: { _id: null, totalRevenue: { $sum: "$totalPrice" } } },
-            ]),
+            Order.aggregate(revenuePipeline),
         ]);
 
         return res.status(200).json({
@@ -776,15 +821,23 @@ const getInactiveProduct = async (req, res) => {
         const { page = 1, limit = 12 } = req.query;
         const skip = (Number(page) - 1) * Number(limit);
 
+        const filter = { isActive: false };
+        const pendingFilter = { approvalStatus: "pending" };
+
+        if (!req.user.isSuperAdmin) {
+            filter.seller = req.user._id;
+            pendingFilter.seller = req.user._id;
+        }
+
         const [products, total] = await Promise.all([
-            Product.find({ isActive:false })
+            Product.find(filter)
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(Number(limit))
                 .populate("category", "name slug")
                 .populate("subcategory", "name slug")
                 .populate("seller", "name email shopName"),
-            Product.countDocuments({ approvalStatus: "pending" }),
+            Product.countDocuments(pendingFilter),
         ]);
 
         return res.status(200).json({
@@ -1065,7 +1118,7 @@ const updateAdmin = async (req, res) => {
             });
         }
 
-        const { name, phone, isSuperAdmin } = req.body;
+        const { name, phone, isSuperAdmin, permissions } = req.body;
         const admin = await Admin.findById(req.params.id);
 
         if (!admin) {
@@ -1078,6 +1131,7 @@ const updateAdmin = async (req, res) => {
         if (name) admin.name = name;
         if (phone) admin.phone = phone;
         if (isSuperAdmin !== undefined) admin.isSuperAdmin = isSuperAdmin;
+        if (permissions !== undefined) admin.permissions = permissions;
 
         await admin.save();
 

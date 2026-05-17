@@ -135,7 +135,7 @@ const registerSeller = async (req, res) => {
 
 const registerAdmin = async (req, res) => {
     try {
-        const { name, email, password, confirmPassword, phone, isSuperAdmin } = req.body;
+        const { name, email, password, confirmPassword, phone, isSuperAdmin, permissions } = req.body;
 
         if (!name || !email || !password || !confirmPassword || !phone) {
             return res.status(400).json({ success: false, message: "Please provide name, email, password, confirm password and phone" });
@@ -151,7 +151,21 @@ const registerAdmin = async (req, res) => {
         const { otp, otpExpiry } = generateOTP();
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        const newAdmin = new Admin({ name, email, password: hashedPassword, phone, isSuperAdmin: isSuperAdmin || false, otp, otpExpiry });
+        const newAdmin = new Admin({ 
+            name, 
+            email, 
+            password: hashedPassword, 
+            phone, 
+            isSuperAdmin: isSuperAdmin || false, 
+            permissions: permissions || {
+                manageProducts: true,
+                manageSellers: true,
+                manageOrders: true,
+                manageCustomers: true
+            },
+            otp, 
+            otpExpiry 
+        });
         await newAdmin.save(); // ✅ Save first
 
         // ✅ Email in background
