@@ -5,6 +5,7 @@ import { Product } from "../models/Product.js";
 import { Order } from "../models/Order.js";
 import { Review } from "../models/Review.js";
 import { Admin } from "../models/Admin.js";
+import { Category } from "../models/Category.js";
 import { Subcategory } from "../models/Subcategory.js";
 import { v2 as cloudinary } from "cloudinary";
 import { deleteImagesFromCloudinary } from "../utils/cloudinary.js";
