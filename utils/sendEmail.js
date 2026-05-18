@@ -6,8 +6,17 @@ import { Resend } from 'resend';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ─── Resend Client ────────────────────────────────────────
-const resend = new Resend(process.env.RESEND_API_KEY);
+// ─── Resend Client (Lazy Initialized to avoid ESM Hoisting Issues) ───
+let resendInstance;
+const getResend = () => {
+    if (!resendInstance) {
+        if (!process.env.RESEND_API_KEY) {
+            throw new Error("RESEND_API_KEY is not defined in the environment variables.");
+        }
+        resendInstance = new Resend(process.env.RESEND_API_KEY);
+    }
+    return resendInstance;
+};
 
 // ─── Helper: Render EJS Template ─────────────────────────
 const renderTemplate = async (templateName, data) => {
@@ -19,7 +28,7 @@ const renderTemplate = async (templateName, data) => {
 const sendWithRetry = async (payload, retries = 2) => {
     for (let i = 0; i <= retries; i++) {
         try {
-            const { data, error } = await resend.emails.send(payload);
+            const { data, error } = await getResend().emails.send(payload);
             if (error) throw new Error(error.message);
             return data;
         } catch (err) {
