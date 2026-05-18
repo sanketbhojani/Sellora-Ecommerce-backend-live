@@ -1,38 +1,48 @@
-import nodemailer from 'nodemailer';
 import ejs from 'ejs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { Resend } from 'resend';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',   // ✅ explicit host instead of service
-    port: 465,
-    secure: true,
-    family: 4,                // ✅ force IPv4 — fixes ENETUNREACH on Render
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-    },
-    pool: true,
-    maxConnections: 3,
-});
+// ─── Resend Client ────────────────────────────────────────
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-// ─── Send OTP Email ───────────────────────────────────────────
+// ─── Helper: Render EJS Template ─────────────────────────
+const renderTemplate = async (templateName, data) => {
+    const templatePath = path.join(__dirname, '../views/emails', templateName);
+    return await ejs.renderFile(templatePath, data);
+};
+
+// ─── Helper: Send with Retry ──────────────────────────────
+const sendWithRetry = async (payload, retries = 2) => {
+    for (let i = 0; i <= retries; i++) {
+        try {
+            const { data, error } = await resend.emails.send(payload);
+            if (error) throw new Error(error.message);
+            return data;
+        } catch (err) {
+            if (i === retries) throw err;
+            console.warn(`[Email] Retry ${i + 1} after error: ${err.message}`);
+            await new Promise(res => setTimeout(res, 1000 * (i + 1))); // exponential wait
+        }
+    }
+};
+
+// ─── Send OTP Email ───────────────────────────────────────
 const sendOTPEmail = async ({ name, email, otp, role }) => {
     try {
-        const templatePath = path.join(__dirname, '../views/emails/otpEmail.ejs');
-        const html = await ejs.renderFile(templatePath, { name, otp, role });
+        const html = await renderTemplate('otpEmail.ejs', { name, otp, role });
 
-        const info = await transporter.sendMail({
-            from: `"Sellora" <${process.env.EMAIL_USER}>`,
+        const data = await sendWithRetry({
+            from: `Sellora <${process.env.EMAIL_FROM}>`,  // e.g. noreply@yourdomain.com
             to: email,
             subject: 'OTP Verification Code',
             html,
         });
 
-        console.log(`[Email] OTP sent to ${email} — messageId: ${info.messageId}`);
+        console.log(`[Email] OTP sent to ${email} — id: ${data.id}`);
         return { success: true };
 
     } catch (error) {
@@ -41,20 +51,19 @@ const sendOTPEmail = async ({ name, email, otp, role }) => {
     }
 };
 
-// ─── Send Password Reset Email ────────────────────────────────
+// ─── Send Password Reset Email ────────────────────────────
 const sendPasswordResetEmail = async ({ name, email, otp, role }) => {
     try {
-        const templatePath = path.join(__dirname, '../views/emails/resetPasswordEmail.ejs');
-        const html = await ejs.renderFile(templatePath, { name, otp, role });
+        const html = await renderTemplate('resetPasswordEmail.ejs', { name, otp, role });
 
-        const info = await transporter.sendMail({
-            from: `"Sellora" <${process.env.EMAIL_USER}>`,
+        const data = await sendWithRetry({
+            from: `Sellora <${process.env.EMAIL_FROM}>`,  // e.g. noreply@yourdomain.com
             to: email,
             subject: 'Password Reset Code',
             html,
         });
 
-        console.log(`[Email] Reset email sent to ${email} — messageId: ${info.messageId}`);
+        console.log(`[Email] Reset email sent to ${email} — id: ${data.id}`);
         return { success: true };
 
     } catch (error) {
