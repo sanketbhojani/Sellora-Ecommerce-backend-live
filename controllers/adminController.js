@@ -1078,6 +1078,14 @@ const deleteAdmin = async (req, res) => {
             });
         }
 
+        // Only Super Admins can delete admin accounts
+        if (!req.user.isSuperAdmin) {
+            return res.status(403).json({
+                success: false,
+                message: "Access denied. Only Super Admins can delete admin accounts.",
+            });
+        }
+
         const admin = await Admin.findById(req.params.id);
         if (!admin) {
             return res.status(404).json({
@@ -1118,6 +1126,17 @@ const updateAdmin = async (req, res) => {
             });
         }
 
+        // Authorization check:
+        // Super Admin can edit any admin account.
+        // Normal Admin can ONLY edit their own details.
+        const isSelf = String(req.user._id) === String(req.params.id);
+        if (!req.user.isSuperAdmin && !isSelf) {
+            return res.status(403).json({
+                success: false,
+                message: "Access denied. Normal admins can only edit their own details.",
+            });
+        }
+
         const { name, phone, isSuperAdmin, permissions } = req.body;
         const admin = await Admin.findById(req.params.id);
 
@@ -1130,8 +1149,20 @@ const updateAdmin = async (req, res) => {
 
         if (name) admin.name = name;
         if (phone) admin.phone = phone;
-        if (isSuperAdmin !== undefined) admin.isSuperAdmin = isSuperAdmin;
-        if (permissions !== undefined) admin.permissions = permissions;
+
+        // ONLY Super Admin can edit isSuperAdmin status and permissions
+        if (req.user.isSuperAdmin) {
+            if (isSuperAdmin !== undefined) admin.isSuperAdmin = isSuperAdmin;
+            if (permissions !== undefined) {
+                admin.permissions = {
+                    manageProducts: permissions.manageProducts !== undefined ? permissions.manageProducts : admin.permissions.manageProducts,
+                    manageSellers: permissions.manageSellers !== undefined ? permissions.manageSellers : admin.permissions.manageSellers,
+                    manageOrders: permissions.manageOrders !== undefined ? permissions.manageOrders : admin.permissions.manageOrders,
+                    manageCustomers: permissions.manageCustomers !== undefined ? permissions.manageCustomers : admin.permissions.manageCustomers,
+                };
+                admin.markModified('permissions');
+            }
+        }
 
         await admin.save();
 

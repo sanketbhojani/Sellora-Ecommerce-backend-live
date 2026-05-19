@@ -639,7 +639,7 @@ router.delete("/admins/:id", deleteAdmin);
 
 /**
  * @swagger
- * /admin/admins/{id}:
+ * /admin/admins/update/{id}:
  *   post:
  *     summary: Update an admin account
  *     description: Updates an administrator's details. (Admin only)
@@ -666,6 +666,17 @@ router.delete("/admins/:id", deleteAdmin);
  *                 type: string
  *               isSuperAdmin:
  *                 type: boolean
+ *               permissions:
+ *                 type: object
+ *                 properties:
+ *                   manageProducts:
+ *                     type: boolean
+ *                   manageSellers:
+ *                     type: boolean
+ *                   manageOrders:
+ *                     type: boolean
+ *                   manageCustomers:
+ *                     type: boolean
  *     responses:
  *       200:
  *         description: Admin updated successfully

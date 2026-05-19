@@ -148,8 +148,32 @@ const registerAdmin = async (req, res) => {
             return res.status(400).json({ success: false, message: "Email already registered as admin" });
         }
 
+        // Only Super Admins can create Super Admin accounts
+        if (isSuperAdmin && (!req.user || !req.user.isSuperAdmin)) {
+            return res.status(403).json({
+                success: false,
+                message: "Only Super Admins can create Super Admin accounts",
+            });
+        }
+
         const { otp, otpExpiry } = generateOTP();
         const hashedPassword = await bcrypt.hash(password, 10);
+
+        // Permissions can only be restricted/assigned for regular Admins.
+        // Force full permissions for Super Admins.
+        const finalPermissions = isSuperAdmin 
+            ? {
+                manageProducts: true,
+                manageSellers: true,
+                manageOrders: true,
+                manageCustomers: true
+              }
+            : (permissions || {
+                manageProducts: true,
+                manageSellers: true,
+                manageOrders: true,
+                manageCustomers: true
+              });
 
         const newAdmin = new Admin({ 
             name, 
@@ -157,12 +181,7 @@ const registerAdmin = async (req, res) => {
             password: hashedPassword, 
             phone, 
             isSuperAdmin: isSuperAdmin || false, 
-            permissions: permissions || {
-                manageProducts: true,
-                manageSellers: true,
-                manageOrders: true,
-                manageCustomers: true
-            },
+            permissions: finalPermissions,
             otp, 
             otpExpiry 
         });
