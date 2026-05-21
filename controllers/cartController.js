@@ -40,13 +40,42 @@ const getCart = async (req, res) => {
         // ✅ Robust filter out inactive/deleted products
         cart.items = cart.items.filter((item) => item.product && item.product.isActive);
         
-        // Save cleaned cart if items were removed
+        // ✅ Sync cart item prices with latest product prices
+        const priceChanges = [];
+        let pricesUpdated = false;
+
+        cart.items.forEach((item) => {
+            if (item.product && item.product.price !== undefined) {
+                const currentProductPrice = item.product.price;
+                const storedCartPrice = item.price;
+
+                if (storedCartPrice !== currentProductPrice) {
+                    priceChanges.push({
+                        productName: item.product.name,
+                        oldPrice: storedCartPrice,
+                        newPrice: currentProductPrice,
+                    });
+                    item.price = currentProductPrice;
+                    pricesUpdated = true;
+                }
+            }
+        });
+
+        // Recalculate totals if any prices changed
+        if (pricesUpdated) {
+            recalculateCart(cart);
+        }
+
+        // Save cleaned/updated cart
         await cart.save();
 
         return res.status(200).json({
             success: true,
             data: cart,
-            message: "Cart fetched successfully",
+            message: priceChanges.length > 0 
+                ? "Some product prices have been updated by the seller" 
+                : "Cart fetched successfully",
+            priceChanges: priceChanges.length > 0 ? priceChanges : undefined,
         });
     } catch (error) {
         return res.status(500).json({
@@ -129,6 +158,7 @@ const addToCart = async (req, res) => {
                 });
             }
             existingItem.quantity = newQuantity;
+            existingItem.price = product.price;  // ✅ Always sync to latest price
         } else {
             cart.items.push({
                 product: productId,
