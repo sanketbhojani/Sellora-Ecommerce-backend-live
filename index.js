@@ -1,7 +1,12 @@
 import express from 'express'
 import cors from 'cors'
 import env from 'dotenv'
-env.config();
+import { fileURLToPath } from 'url';
+import path from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+env.config({ path: path.join(__dirname, '.env') });
 import './config/db.js'
 import router from './routes/router.js';
 import cookieParser from 'cookie-parser';
