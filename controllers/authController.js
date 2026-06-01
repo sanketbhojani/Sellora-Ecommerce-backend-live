@@ -63,9 +63,8 @@ const registerCustomer = async (req, res) => {
         await newCustomer.save(); // ✅ Save first
 
         // ✅ Email in background — never blocks response
-        sendOTPEmail({ name, email, otp, role: "Customer" }).catch(err =>
-            console.error("[Email] registerCustomer failed:", err.message)
-        );
+        await sendOTPEmail({ name, email, otp, role: "Customer" })
+
 
         return res.status(201).json({
             success: true,
@@ -161,29 +160,29 @@ const registerAdmin = async (req, res) => {
 
         // Permissions can only be restricted/assigned for regular Admins.
         // Force full permissions for Super Admins.
-        const finalPermissions = isSuperAdmin 
+        const finalPermissions = isSuperAdmin
             ? {
                 manageProducts: true,
                 manageSellers: true,
                 manageOrders: true,
                 manageCustomers: true
-              }
+            }
             : (permissions || {
                 manageProducts: true,
                 manageSellers: true,
                 manageOrders: true,
                 manageCustomers: true
-              });
+            });
 
-        const newAdmin = new Admin({ 
-            name, 
-            email, 
-            password: hashedPassword, 
-            phone, 
-            isSuperAdmin: isSuperAdmin || false, 
+        const newAdmin = new Admin({
+            name,
+            email,
+            password: hashedPassword,
+            phone,
+            isSuperAdmin: isSuperAdmin || false,
             permissions: finalPermissions,
-            otp, 
-            otpExpiry 
+            otp,
+            otpExpiry
         });
         await newAdmin.save(); // ✅ Save first
 
