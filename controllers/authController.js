@@ -64,6 +64,7 @@ const registerCustomer = async (req, res) => {
         // ✅ Send email first, only create user if email succeeds
         const emailResult = await sendOTPEmail({ name, email, otp, role: "Customer" });
         if (!emailResult.success) {
+            console.error("[Email Error - Customer]:", emailResult.error);
             return res.status(500).json({ success: false, message: "Failed to send OTP email. Please try again later." });
         }
         
@@ -111,6 +112,7 @@ const registerSeller = async (req, res) => {
         // ✅ Send email first, only create user if email succeeds
         const emailResult = await sendOTPEmail({ name, email, otp, role: "Seller" });
         if (!emailResult.success) {
+            console.error("[Email Error - Seller]:", emailResult.error);
             return res.status(500).json({ success: false, message: "Failed to send OTP email. Please try again later." });
         }
         
@@ -193,6 +195,7 @@ const registerAdmin = async (req, res) => {
         // ✅ Send email first, only create admin if email succeeds
         const emailResult = await sendOTPEmail({ name, email, otp, role: "Admin" });
         if (!emailResult.success) {
+            console.error("[Email Error - Admin]:", emailResult.error);
             return res.status(500).json({ success: false, message: "Failed to send OTP email. Please try again later." });
         }
         
