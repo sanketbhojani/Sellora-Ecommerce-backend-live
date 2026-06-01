@@ -60,11 +60,10 @@ const registerCustomer = async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10);
 
         const newCustomer = new Customer({ name, email, password: hashedPassword, phone, otp, otpExpiry });
-        await newCustomer.save(); // ✅ Save first
 
-        // ✅ Email in background — never blocks response
-        await sendOTPEmail({ name, email, otp, role: "Customer" })
-
+        // ✅ Send email first, only create user if email succeeds
+        await sendOTPEmail({ name, email, otp, role: "Customer" });
+        await newCustomer.save();
 
         return res.status(201).json({
             success: true,
@@ -104,12 +103,10 @@ const registerSeller = async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10);
 
         const newSeller = new Seller({ name, email, password: hashedPassword, phone, shopName, shopDescription, otp, otpExpiry });
-        await newSeller.save(); // ✅ Save first
 
-        // ✅ Email in background
-        sendOTPEmail({ name, email, otp, role: "Seller" }).catch(err =>
-            console.error("[Email] registerSeller failed:", err.message)
-        );
+        // ✅ Send email first, only create user if email succeeds
+        await sendOTPEmail({ name, email, otp, role: "Seller" });
+        await newSeller.save();
 
         return res.status(201).json({
             success: true,
@@ -184,12 +181,10 @@ const registerAdmin = async (req, res) => {
             otp,
             otpExpiry
         });
-        await newAdmin.save(); // ✅ Save first
 
-        // ✅ Email in background
-        sendOTPEmail({ name, email, otp, role: "Admin" }).catch(err =>
-            console.error("[Email] registerAdmin failed:", err.message)
-        );
+        // ✅ Send email first, only create admin if email succeeds
+        await sendOTPEmail({ name, email, otp, role: "Admin" });
+        await newAdmin.save();
 
         return res.status(201).json({
             success: true,
