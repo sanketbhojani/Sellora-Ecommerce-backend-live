@@ -105,17 +105,20 @@ const requestReturn = async (req, res) => {
             });
         }
 
-        // ✅ No duplicate return
-        const existingReturn = await Return.findOne({
+        // ✅ Allow multiple returns up to total ordered quantity
+        const existingReturns = await Return.find({
             order: orderId,
             product: productId,
             customer: req.user._id,
             status: { $in: ["requested", "approved", "refunded"] },
         });
-        if (existingReturn) {
+        
+        const totalReturnedQuantity = existingReturns.reduce((sum, r) => sum + r.quantity, 0);
+
+        if (totalReturnedQuantity + parsedQuantity > orderItem.quantity) {
             return res.status(400).json({
                 success: false,
-                message: "Return already requested for this product",
+                message: `You have already requested returns for ${totalReturnedQuantity} unit(s). You can only return up to ${orderItem.quantity - totalReturnedQuantity} more unit(s) of this product.`,
             });
         }
 
@@ -336,18 +339,21 @@ const approveReturn = async (req, res) => {
             });
         }
 
-        if (payment.status !== "paid") {
+        if (payment.status !== "paid" && payment.status !== "refunded") {
             return res.status(400).json({
                 success: false,
                 message: `Cannot refund — payment status is: ${payment.status}`,
             });
         }
 
-        // ✅ Update payment to refunded
-        payment.status = "refunded";
-        payment.refundAmount = returnRequest.refundAmount;
-        payment.refundReason = returnRequest.reason;
+        // ✅ Update payment (increment refund amount for partial/quantity-wise returns)
+        payment.refundAmount = (payment.refundAmount || 0) + returnRequest.refundAmount;
+        payment.refundReason = payment.refundReason ? payment.refundReason + " | " + returnRequest.reason : returnRequest.reason;
         payment.refundedAt = new Date();
+        
+        if (payment.refundAmount >= payment.amount) {
+            payment.status = "refunded";
+        }
         await payment.save();
 
         // ✅ Update return to refunded
@@ -356,10 +362,12 @@ const approveReturn = async (req, res) => {
         returnRequest.refundNote = refundNote || "Refund approved by admin";
         await returnRequest.save();
 
-        // ✅ Update order payment status
-        await Order.findByIdAndUpdate(returnRequest.order, {
-            paymentStatus: "refunded",
-        });
+        // ✅ Update order payment status only if fully refunded
+        if (payment.status === "refunded") {
+            await Order.findByIdAndUpdate(returnRequest.order, {
+                paymentStatus: "refunded",
+            });
+        }
 
         // ✅ Restore product stock
         await Product.findByIdAndUpdate(returnRequest.product, {
