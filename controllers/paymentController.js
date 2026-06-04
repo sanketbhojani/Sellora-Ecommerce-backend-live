@@ -97,6 +97,11 @@ const getAllPayments = async (req, res) => {
         if (status) filter.status = status;
         if (method) filter.method = method;
 
+        if (req.role === 'admin' || req.role === 'seller') {
+            const adminOrders = await Order.find({ "orderItems.seller": req.user._id }).select("_id");
+            filter.order = { $in: adminOrders.map(o => o._id) };
+        }
+
         const skip = (Number(page) - 1) * Number(limit);
 
         const [payments, total] = await Promise.all([
@@ -207,6 +212,12 @@ const processRefund = async (req, res) => {
 
 const getPaymentStats = async (req, res) => {
     try {
+        const baseFilter = {};
+        if (req.role === 'admin' || req.role === 'seller') {
+            const adminOrders = await Order.find({ "orderItems.seller": req.user._id }).select("_id");
+            baseFilter.order = { $in: adminOrders.map(o => o._id) };
+        }
+
         const [
             totalPayments,
             paidPayments,
@@ -216,17 +227,17 @@ const getPaymentStats = async (req, res) => {
             revenueData,
             refundData,
         ] = await Promise.all([
-            Payment.countDocuments(),
-            Payment.countDocuments({ status: "paid" }),
-            Payment.countDocuments({ status: "pending" }),
-            Payment.countDocuments({ status: "failed" }),
-            Payment.countDocuments({ status: "refunded" }),
+            Payment.countDocuments(baseFilter),
+            Payment.countDocuments({ ...baseFilter, status: "paid" }),
+            Payment.countDocuments({ ...baseFilter, status: "pending" }),
+            Payment.countDocuments({ ...baseFilter, status: "failed" }),
+            Payment.countDocuments({ ...baseFilter, status: "refunded" }),
             Payment.aggregate([
-                { $match: { status: "paid" } },
+                { $match: { ...baseFilter, status: "paid" } },
                 { $group: { _id: null, total: { $sum: "$amount" } } },
             ]),
             Payment.aggregate([
-                { $match: { status: "refunded" } },
+                { $match: { ...baseFilter, status: "refunded" } },
                 { $group: { _id: null, total: { $sum: "$refundAmount" } } },
             ]),
         ]);

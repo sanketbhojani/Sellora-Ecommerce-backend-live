@@ -672,9 +672,8 @@ const getAllOrders = async (req, res) => {
         if (paymentStatus) filter.paymentStatus = paymentStatus;
         if (paymentMethod) filter.paymentMethod = paymentMethod;
 
-        if (!req.user.isSuperAdmin) {
-            filter["orderItems.seller"] = req.user._id;
-        }
+        // Force filter to only show orders containing this admin's products
+        filter["orderItems.seller"] = req.user._id;
 
         const skip = (Number(page) - 1) * Number(limit);
 
@@ -682,20 +681,14 @@ const getAllOrders = async (req, res) => {
             { $match: { paymentStatus: "paid", ...filter } }
         ];
 
-        if (!req.user.isSuperAdmin) {
-            revenuePipeline.push({ $unwind: "$orderItems" });
-            revenuePipeline.push({ $match: { "orderItems.seller": req.user._id } });
-            revenuePipeline.push({
-                $group: {
-                    _id: null,
-                    totalRevenue: { $sum: { $multiply: ["$orderItems.price", "$orderItems.quantity"] } }
-                }
-            });
-        } else {
-            revenuePipeline.push({
-                $group: { _id: null, totalRevenue: { $sum: "$totalPrice" } }
-            });
-        }
+        revenuePipeline.push({ $unwind: "$orderItems" });
+        revenuePipeline.push({ $match: { "orderItems.seller": req.user._id } });
+        revenuePipeline.push({
+            $group: {
+                _id: null,
+                totalRevenue: { $sum: { $multiply: ["$orderItems.price", "$orderItems.quantity"] } }
+            }
+        });
 
         const [orders, total, revenueData] = await Promise.all([
             Order.find(filter)

@@ -260,6 +260,10 @@ const getAllReturns = async (req, res) => {
 
         const filter = {};
         if (status) filter.status = status;
+        
+        if (req.role === 'admin' || req.role === 'seller') {
+            filter.seller = req.user._id;
+        }
 
         const skip = (Number(page) - 1) * Number(limit);
 
@@ -437,6 +441,11 @@ const rejectReturn = async (req, res) => {
 
 const getReturnStats = async (req, res) => {
     try {
+        const baseFilter = {};
+        if (req.role === 'admin' || req.role === 'seller') {
+            baseFilter.seller = req.user._id;
+        }
+
         const [
             totalReturns,
             requestedReturns,
@@ -444,12 +453,12 @@ const getReturnStats = async (req, res) => {
             rejectedReturns,
             totalRefundData,
         ] = await Promise.all([
-            Return.countDocuments(),
-            Return.countDocuments({ status: "requested" }),
-            Return.countDocuments({ status: "refunded" }),
-            Return.countDocuments({ status: "rejected" }),
+            Return.countDocuments(baseFilter),
+            Return.countDocuments({ ...baseFilter, status: "requested" }),
+            Return.countDocuments({ ...baseFilter, status: "refunded" }),
+            Return.countDocuments({ ...baseFilter, status: "rejected" }),
             Return.aggregate([
-                { $match: { status: "refunded" } },
+                { $match: { ...baseFilter, status: "refunded" } },
                 { $group: { _id: null, total: { $sum: "$refundAmount" } } },
             ]),
         ]);

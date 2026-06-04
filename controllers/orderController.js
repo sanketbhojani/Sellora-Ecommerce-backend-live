@@ -566,6 +566,8 @@ const getSellerOrders = async (req, res) => {
 
 const getOrderStats = async (req, res) => {
     try {
+        const baseFilter = req.role === 'admin' ? { "orderItems.seller": req.user._id } : {};
+
         const [
             totalOrders,
             placedOrders,
@@ -576,16 +578,17 @@ const getOrderStats = async (req, res) => {
             cancelledOrders,
             totalRevenueData,
         ] = await Promise.all([
-            Order.countDocuments(),
-            Order.countDocuments({ orderStatus: "placed" }),
-            Order.countDocuments({ orderStatus: "confirmed" }),
-            Order.countDocuments({ orderStatus: "processing" }),
-            Order.countDocuments({ orderStatus: "shipped" }),
-            Order.countDocuments({ orderStatus: "delivered" }),
-            Order.countDocuments({ orderStatus: "cancelled" }),
+            Order.countDocuments(baseFilter),
+            Order.countDocuments({ ...baseFilter, orderStatus: "placed" }),
+            Order.countDocuments({ ...baseFilter, orderStatus: "confirmed" }),
+            Order.countDocuments({ ...baseFilter, orderStatus: "processing" }),
+            Order.countDocuments({ ...baseFilter, orderStatus: "shipped" }),
+            Order.countDocuments({ ...baseFilter, orderStatus: "delivered" }),
+            Order.countDocuments({ ...baseFilter, orderStatus: "cancelled" }),
             Order.aggregate([
-                { $match: { paymentStatus: "paid" } },
-                { $group: { _id: null, total: { $sum: "$totalPrice" } } },
+                { $unwind: "$orderItems" },
+                { $match: { ...baseFilter, paymentStatus: "paid" } },
+                { $group: { _id: null, total: { $sum: { $multiply: ["$orderItems.price", "$orderItems.quantity"] } } } },
             ]),
         ]);
 
