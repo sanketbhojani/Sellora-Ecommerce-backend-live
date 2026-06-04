@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import { Category } from "../models/Category.js";
 import { Subcategory } from "../models/Subcategory.js";
 import { v2 as cloudinary } from "cloudinary";
+import { getCache, setCache, deleteCache, deleteCachePattern } from "../config/redis.js";
 
 // ─── Cloudinary Helpers ───────────────────────────────────────
 
@@ -56,6 +57,10 @@ const addCategory = async (req, res) => {
         const category = new Category({ name, image });
         await category.save();
 
+        // ✅ Invalidate category list cache and product caches
+        await deleteCache('categories:all');
+        await deleteCachePattern('products:*');
+
         return res.status(201).json({
             success: true,
             data: category,
@@ -76,14 +81,30 @@ const addCategory = async (req, res) => {
 
 const getAllCategories = async (req, res) => {
     try {
+        const cacheKey = 'categories:all';
+        const cachedCategories = await getCache(cacheKey);
+
+        if (cachedCategories) {
+            return res.status(200).json({
+                success: true,
+                data: cachedCategories,
+                message: "Categories fetched successfully (cached)",
+            });
+        }
+
         const categories = await Category.find({ isActive: true }).sort({ name: 1 });
+
+        const responseData = {
+            total: categories.length,
+            categories,
+        };
+
+        // Cache for 2 hours (7200 seconds)
+        await setCache(cacheKey, responseData, 7200);
 
         return res.status(200).json({
             success: true,
-            data: {
-                total: categories.length,
-                categories,
-            },
+            data: responseData,
             message: "Categories fetched successfully",
         });
 
@@ -167,6 +188,10 @@ const updateCategory = async (req, res) => {
             { new: true, runValidators: true }  // ✅ fixed: returnNewDocument → new: true
         );
 
+        // ✅ Invalidate category list cache and product caches
+        await deleteCache('categories:all');
+        await deleteCachePattern('products:*');
+
         return res.status(200).json({
             success: true,
             data: updated,
@@ -224,6 +249,10 @@ const deleteCategory = async (req, res) => {
 
         // ✅ Hard delete category from MongoDB
         await Category.findByIdAndDelete(req.params.id);
+
+        // ✅ Invalidate category list cache and product caches
+        await deleteCache('categories:all');
+        await deleteCachePattern('products:*');
 
         return res.status(200).json({
             success: true,

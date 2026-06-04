@@ -8,6 +8,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 env.config({ path: path.join(__dirname, '.env') });
 import './config/db.js'
+import './config/redis.js'
 import router from './routes/router.js';
 import cookieParser from 'cookie-parser';
 import { authLimiter, generalLimiter, helmet, mongoSanitize } from './middlewares/securityMiddleware.js';

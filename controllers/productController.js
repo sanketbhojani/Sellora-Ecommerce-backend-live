@@ -5,6 +5,7 @@ import { Subcategory } from "../models/Subcategory.js";
 import { v2 as cloudinary } from "cloudinary";
 import { Seller } from "../models/Seller.js";
 import { deleteImagesFromCloudinary } from "../utils/cloudinary.js";
+import { getCache, setCache, deleteCache, deleteCachePattern } from "../config/redis.js";
 
 
 // ─── Cloudinary Helpers ───────────────────────────────────────
@@ -125,6 +126,9 @@ const addProduct = async (req, res) => {
             { path: "seller", select: "name email" },
         ]);
 
+        // ✅ Invalidate product list caches
+        await deleteCachePattern('products:list:*');
+
         return res.status(201).json({
             success: true,
             data: product,
@@ -158,6 +162,21 @@ const getAllProducts = async (req, res) => {
             sortBy = "createdAt",
             sortOrder = "desc",
         } = req.query;
+
+        // ✅ Check Redis Cache first
+        const queryKey = JSON.stringify({
+            search, categoryId, subcategoryId, minPrice, maxPrice, page, limit, sort, sortBy, sortOrder
+        });
+        const cacheKey = `products:list:${Buffer.from(queryKey).toString('base64')}`;
+        const cachedData = await getCache(cacheKey);
+
+        if (cachedData) {
+            return res.status(200).json({
+                success: true,
+                message: "Products fetched successfully (cached)",
+                data: cachedData
+            });
+        }
 
         const filter = { isActive: true };
 
@@ -228,15 +247,20 @@ const getAllProducts = async (req, res) => {
             Product.countDocuments(filter),
         ]);
 
+        const responseData = {
+            products,
+            total,
+            page: Number(page),
+            totalPages: Math.ceil(total / Number(limit)),
+        };
+
+        // Cache product list for 10 minutes (600 seconds)
+        await setCache(cacheKey, responseData, 600);
+
         return res.status(200).json({
             success: true,
             message: "Products fetched successfully",
-            data: {
-                products,
-                total,
-                page: Number(page),
-                totalPages: Math.ceil(total / Number(limit)),
-            },
+            data: responseData,
         });
 
     } catch (error) {
@@ -258,6 +282,17 @@ const getProductById = async (req, res) => {
             });
         }
 
+        const cacheKey = `products:detail:${req.params.id}`;
+        const cachedProduct = await getCache(cacheKey);
+
+        if (cachedProduct) {
+            return res.status(200).json({
+                success: true,
+                data: cachedProduct,
+                message: "Product fetched successfully (cached)",
+            });
+        }
+
         const product = await Product.findById(req.params.id)
             .populate("category", "name slug")
             .populate("subcategory", "name slug")
@@ -269,6 +304,9 @@ const getProductById = async (req, res) => {
                 message: "Product not found",
             });
         }
+
+        // Cache product details for 30 minutes (1800 seconds)
+        await setCache(cacheKey, product, 1800);
 
         return res.status(200).json({
             success: true,
@@ -421,6 +459,10 @@ const updateProduct = async (req, res) => {
             .populate("subcategory", "name slug")
             .populate("seller", "name email");
 
+        // ✅ Invalidate product caches
+        await deleteCache(`products:detail:${req.params.id}`);
+        await deleteCachePattern('products:list:*');
+
         // ✅ Delete old images only after successful DB update
         if (oldImages.length > 0) {
             await deleteImagesFromCloudinary(oldImages);
@@ -476,6 +518,10 @@ const deleteProduct = async (req, res) => {
         await deleteImagesFromCloudinary(product.images);
 
         await Product.findByIdAndDelete(req.params.id);
+
+        // ✅ Invalidate product caches
+        await deleteCache(`products:detail:${req.params.id}`);
+        await deleteCachePattern('products:list:*');
 
         // ✅ Decrement seller totalProducts
         await Seller.findByIdAndUpdate(product.seller, {

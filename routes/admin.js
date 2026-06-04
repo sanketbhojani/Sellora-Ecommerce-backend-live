@@ -32,6 +32,8 @@ import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 import upload from '../middlewares/uploadMiddleware.js';
 import validate from '../middlewares/validateMiddleware.js';
 import { createProductAdminSchema, updateProductSchema } from '../validators/productValidator.js';
+import { getOrderStats, updateOrderStatus } from "../controllers/orderController.js";
+import { getAllPayments, getPaymentStats, processRefund } from "../controllers/paymentController.js";
 
 const router = express.Router();
 
@@ -684,5 +686,129 @@ router.delete("/admins/:id", deleteAdmin);
  *         description: Admin not found
  */
 router.post("/admins/update/:id", updateAdmin);
+
+/**
+ * @swagger
+ * /admin/getOrderStats:
+ *   get:
+ *     summary: Get overall order statistics (Admin)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Order statistics retrieved successfully
+ */
+router.get("/getOrderStats", getOrderStats);
+
+/**
+ * @swagger
+ * /admin/updateOrderStatus/{id}:
+ *   post:
+ *     summary: Update the status of an order (Admin)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Order ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [orderStatus]
+ *             properties:
+ *               orderStatus:
+ *                 type: string
+ *                 enum: [placed, confirmed, processing, shipped, delivered, cancelled]
+ *               trackingId:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Order status updated successfully
+ */
+router.post("/updateOrderStatus/:id", updateOrderStatus);
+
+/**
+ * @swagger
+ * /admin/getAllPayments:
+ *   get:
+ *     summary: Get all payments (Admin)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: method
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: List of all payments
+ */
+router.get("/getAllPayments", getAllPayments);
+
+/**
+ * @swagger
+ * /admin/getPaymentStats:
+ *   get:
+ *     summary: Get overall payment statistics (Admin)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Payment statistics retrieved successfully
+ */
+router.get("/getPaymentStats", getPaymentStats);
+
+/**
+ * @swagger
+ * /admin/processRefund/{paymentId}:
+ *   post:
+ *     summary: Process a refund for a payment (Admin)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: paymentId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Payment ID
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               refundAmount:
+ *                 type: number
+ *               refundReason:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Refund processed successfully
+ */
+router.post("/processRefund/:paymentId", processRefund);
 
 export default router;

@@ -23,7 +23,7 @@ const transporter = nodemailer.createTransport({
 });
 
 // ─── Send OTP Email ───────────────────────────────────────────
-const sendOTPEmail = async ({ name, email, otp, role }) => {
+const sendOTPEmail = async ({ name, email, otp, role }, retries = 3) => {
     try {
         const templatePath = path.join(__dirname, '../views/emails/otpEmail.ejs');
         const html = await ejs.renderFile(templatePath, { name, otp, role });
@@ -40,12 +40,16 @@ const sendOTPEmail = async ({ name, email, otp, role }) => {
 
     } catch (error) {
         console.error('[Email] sendOTPEmail failed:', error.message);
+        if (retries > 0) {
+            console.log(`[Email] Retrying OTP email... (${retries} retries left)`);
+            return sendOTPEmail({ name, email, otp, role }, retries - 1);
+        }
         return { success: false, error: error.message };
     }
 };
 
 // ─── Send Password Reset Email ────────────────────────────────
-const sendPasswordResetEmail = async ({ name, email, otp, role }) => {
+const sendPasswordResetEmail = async ({ name, email, otp, role }, retries = 3) => {
     try {
         const templatePath = path.join(__dirname, '../views/emails/resetPasswordEmail.ejs');
         const html = await ejs.renderFile(templatePath, { name, otp, role });
@@ -62,6 +66,10 @@ const sendPasswordResetEmail = async ({ name, email, otp, role }) => {
 
     } catch (error) {
         console.error('[Email] sendPasswordResetEmail failed:', error.message);
+        if (retries > 0) {
+            console.log(`[Email] Retrying reset email... (${retries} retries left)`);
+            return sendPasswordResetEmail({ name, email, otp, role }, retries - 1);
+        }
         return { success: false, error: error.message };
     }
 };
