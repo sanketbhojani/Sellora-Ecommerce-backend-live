@@ -48,6 +48,10 @@ const customerSchema = new mongoose.Schema({
         default:"customer",
         immutable:true
     },
+    refreshToken: {
+        type: String,
+        default: null,
+    },
     isActive: {
       type: Boolean,
       default: true,

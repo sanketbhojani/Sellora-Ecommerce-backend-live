@@ -76,6 +76,10 @@ const sellerSchema  = new mongoose.Schema({
       type: String,
       default: "seller",
       immutable: true,
+    },
+    refreshToken: {
+        type: String,
+        default: null,
     }
 },{timestamps:true});
 

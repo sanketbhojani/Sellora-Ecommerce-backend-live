@@ -5,8 +5,9 @@ import { v2 as cloudinary } from "cloudinary";
 import bcrypt from "bcryptjs";
 import generateOTP from "../utils/generateOTP.js";
 import { sendOTPEmail, sendPasswordResetEmail } from "../utils/sendEmail.js";
-import generateToken from "../utils/generateToken.js";
+import { generateAccessToken, generateRefreshToken } from "../utils/generateToken.js";
 import mongoose from "mongoose";
+import jwt from "jsonwebtoken";
 
 // ─── Helpers ──────────────────────────────────────────────────
 
@@ -251,9 +252,15 @@ const verifyOTP = async (req, res) => {
         user.otpExpiry = null;
         await user.save();
 
-        const token = generateToken(user._id, detectedRole);
+        const accessToken = generateAccessToken(user._id, detectedRole);
+        const refreshToken = generateRefreshToken(user._id, detectedRole);
+        
+        user.refreshToken = refreshToken;
+        await user.save();
+
         const cookieName = getCookieNameByRole(detectedRole);
-        res.cookie(cookieName, token, { httpOnly: true, sameSite: "strict", maxAge: 30 * 24 * 60 * 60 * 1000 });
+        res.cookie(cookieName, accessToken, { httpOnly: true, sameSite: "strict", maxAge: 15 * 60 * 1000 });
+        res.cookie(`${cookieName}Refresh`, refreshToken, { httpOnly: true, sameSite: "strict", maxAge: 7 * 24 * 60 * 60 * 1000 });
 
         return res.status(200).json({
             success: true,
@@ -268,7 +275,7 @@ const verifyOTP = async (req, res) => {
                 isVerified: user.isVerified,
                 isSuperAdmin: user.isSuperAdmin,
                 permissions: user.permissions,
-                token,
+                token: accessToken,
             },
             message: "Email verified successfully! You can now login.",
         });
@@ -359,9 +366,15 @@ const login = async (req, res) => {
             return res.status(401).json({ success: false, message: "Invalid email or password" });
         }
 
-        const token = generateToken(user._id, role);
+        const accessToken = generateAccessToken(user._id, role);
+        const refreshToken = generateRefreshToken(user._id, role);
+        
+        user.refreshToken = refreshToken;
+        await user.save();
+
         const cookieName = getCookieNameByRole(role);
-        res.cookie(cookieName, token, { httpOnly: true, sameSite: "strict", maxAge: 30 * 24 * 60 * 60 * 1000 });
+        res.cookie(cookieName, accessToken, { httpOnly: true, sameSite: "strict", maxAge: 15 * 60 * 1000 });
+        res.cookie(`${cookieName}Refresh`, refreshToken, { httpOnly: true, sameSite: "strict", maxAge: 7 * 24 * 60 * 60 * 1000 });
 
         return res.status(200).json({
             success: true,
@@ -375,7 +388,7 @@ const login = async (req, res) => {
                 shopName: user.shopName,
                 isSuperAdmin: user.isSuperAdmin,
                 permissions: user.permissions,
-                token,
+                token: accessToken,
             },
             message: "Login successfully",
         });
@@ -526,7 +539,13 @@ const logout = async (req, res) => {
         const role = req.headers['x-role'] || req.role || 'customer';
         const cookieName = getCookieNameByRole(role);
 
+        if (req.user) {
+            const Model = getModelByRole(req.user.role || role);
+            await Model.findByIdAndUpdate(req.user._id, { refreshToken: null });
+        }
+
         res.clearCookie(cookieName, { httpOnly: true, sameSite: "strict" });
+        res.clearCookie(`${cookieName}Refresh`, { httpOnly: true, sameSite: "strict" });
         res.clearCookie("token", { httpOnly: true, sameSite: "strict" });
 
         return res.status(200).json({ success: true, message: "Logged out successfully" });
@@ -657,6 +676,42 @@ const resetpassword2 = async (req, res) => {
     }
 };
 
+// ─── REFRESH TOKEN ────────────────────────────────────────────
+
+const refreshToken = async (req, res) => {
+    try {
+        const role = req.headers['x-role'] || 'customer';
+        const cookieName = getCookieNameByRole(role);
+        const token = req.cookies[`${cookieName}Refresh`];
+
+        if (!token) {
+            return res.status(401).json({ success: false, message: "No refresh token found" });
+        }
+
+        const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET || (process.env.JWT_SECRET + 'refresh_secret_fallback'));
+        const Model = getModelByRole(decoded.role);
+        const user = await Model.findById(decoded.id);
+
+        if (!user || user.refreshToken !== token) {
+            return res.status(401).json({ success: false, message: "Invalid refresh token" });
+        }
+
+        const newAccessToken = generateAccessToken(user._id, decoded.role);
+        const newRefreshToken = generateRefreshToken(user._id, decoded.role);
+        
+        user.refreshToken = newRefreshToken;
+        await user.save();
+
+        res.cookie(cookieName, newAccessToken, { httpOnly: true, sameSite: "strict", maxAge: 15 * 60 * 1000 });
+        res.cookie(`${cookieName}Refresh`, newRefreshToken, { httpOnly: true, sameSite: "strict", maxAge: 7 * 24 * 60 * 60 * 1000 });
+
+        return res.status(200).json({ success: true, token: newAccessToken });
+
+    } catch (error) {
+        return res.status(401).json({ success: false, message: "Refresh token is invalid or expired" });
+    }
+};
+
 export {
     registerCustomer,
     registerSeller,
@@ -671,5 +726,6 @@ export {
     logout,
     initiateManualVerification,
     forgetpassword2,
-    resetpassword2
+    resetpassword2,
+    refreshToken
 };

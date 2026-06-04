@@ -77,6 +77,10 @@ const adminSchema = new mongoose.Schema({
       type: String,
       default: "admin",
       immutable: true,
+    },
+    refreshToken: {
+        type: String,
+        default: null,
     }
 },{timestamps:true});
 

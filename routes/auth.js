@@ -1,5 +1,5 @@
 import express from 'express'
-import { changePassword, forgetpassword2, forgotPassword, getMe, initiateManualVerification, login, logout, registerAdmin, registerCustomer, registerSeller, resendOTP, resetPassword, resetpassword2, verifyOTP } from '../controllers/authController.js';
+import { changePassword, forgetpassword2, forgotPassword, getMe, initiateManualVerification, login, logout, registerAdmin, registerCustomer, registerSeller, resendOTP, resetPassword, resetpassword2, verifyOTP, refreshToken } from '../controllers/authController.js';
 import { authorizeRoles, protect } from '../middlewares/authMiddleware.js';
 
 const router = express.Router();
@@ -636,5 +636,18 @@ router.get('/getMe', protect, getMe)
  *         description: Logged out successfully
  */
 router.post('/logout', logout)
+/**
+ * @swagger
+ * /auth/refresh:
+ *   post:
+ *     summary: Refresh access token
+ *     tags: [Auth]
+ *     responses:
+ *       200:
+ *         description: Token refreshed successfully
+ *       401:
+ *         description: Refresh token invalid or expired
+ */
+router.post('/refresh', refreshToken)
 
 export default router;
