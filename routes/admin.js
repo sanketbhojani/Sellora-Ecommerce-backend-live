@@ -34,6 +34,7 @@ import validate from '../middlewares/validateMiddleware.js';
 import { createProductAdminSchema, updateProductSchema } from '../validators/productValidator.js';
 import { getOrderStats, updateOrderStatus } from "../controllers/orderController.js";
 import { getAllPayments, getPaymentStats, processRefund } from "../controllers/paymentController.js";
+import { getAllReturns, getReturnStats, approveReturn, rejectReturn } from "../controllers/returnController.js";
 
 const router = express.Router();
 
@@ -810,5 +811,106 @@ router.get("/getPaymentStats", getPaymentStats);
  *         description: Refund processed successfully
  */
 router.post("/processRefund/:paymentId", processRefund);
+
+/**
+ * @swagger
+ * /admin/getAllReturns:
+ *   get:
+ *     summary: Get all return requests (Admin)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: List of all returns
+ */
+router.get("/getAllReturns", getAllReturns);
+
+/**
+ * @swagger
+ * /admin/getReturnStats:
+ *   get:
+ *     summary: Get overall return statistics (Admin)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Return statistics retrieved successfully
+ */
+router.get("/getReturnStats", getReturnStats);
+
+/**
+ * @swagger
+ * /admin/approveReturn/{id}:
+ *   post:
+ *     summary: Approve a return request and process refund (Admin)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Return ID
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               refundNote:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Return approved and refunded
+ */
+router.post("/approveReturn/:id", approveReturn);
+
+/**
+ * @swagger
+ * /admin/rejectReturn/{id}:
+ *   post:
+ *     summary: Reject a return request (Admin)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Return ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [rejectedReason]
+ *             properties:
+ *               rejectedReason:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Return request rejected successfully
+ */
+router.post("/rejectReturn/:id", rejectReturn);
 
 export default router;
