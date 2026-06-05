@@ -11,15 +11,16 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 
 const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',   // ✅ explicit host instead of service
-    port: 587,
-    secure: false,
+    port: 465,
+    secure: true,
     family: 4,                // ✅ force IPv4 — fixes ENETUNREACH on Render
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
     },
-    pool: true,
-    maxConnections: 3,
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 10000,
 });
 
 // ─── Send OTP Email ───────────────────────────────────────────
