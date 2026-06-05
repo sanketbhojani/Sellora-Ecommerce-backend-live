@@ -11,8 +11,8 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 
 const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',   // ✅ explicit host instead of service
-    port: 465,
-    secure: true,
+    port: 587,
+    secure: false,
     family: 4,                // ✅ force IPv4 — fixes ENETUNREACH on Render
     auth: {
         user: process.env.EMAIL_USER,
