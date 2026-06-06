@@ -62,11 +62,11 @@ const registerCustomer = async (req, res) => {
 
         const newCustomer = new Customer({ name, email, password: hashedPassword, phone, otp, otpExpiry });
 
-        // ✅ Send email first, only create user if email succeeds
+        // ✅ Send email, but do NOT block user creation if it fails (to bypass Render SMTP limits)
         const emailResult = await sendOTPEmail({ name, email, otp, role: "Customer" });
         if (!emailResult.success) {
             console.error("[Email Error - Customer]:", emailResult.error);
-            return res.status(500).json({ success: false, message: "Failed to send OTP email. Please try again later." });
+            // Bypassing 500 error return so the API still succeeds and returns 201 with the OTP
         }
         
         await newCustomer.save();
@@ -110,11 +110,11 @@ const registerSeller = async (req, res) => {
 
         const newSeller = new Seller({ name, email, password: hashedPassword, phone, shopName, shopDescription, otp, otpExpiry });
 
-        // ✅ Send email first, only create user if email succeeds
+        // ✅ Send email, but do NOT block user creation if it fails
         const emailResult = await sendOTPEmail({ name, email, otp, role: "Seller" });
         if (!emailResult.success) {
             console.error("[Email Error - Seller]:", emailResult.error);
-            return res.status(500).json({ success: false, message: "Failed to send OTP email. Please try again later." });
+            // Bypassing 500 error return
         }
         
         await newSeller.save();
@@ -193,11 +193,11 @@ const registerAdmin = async (req, res) => {
             otpExpiry
         });
 
-        // ✅ Send email first, only create admin if email succeeds
+        // ✅ Send email, but do NOT block user creation if it fails
         const emailResult = await sendOTPEmail({ name, email, otp, role: "Admin" });
         if (!emailResult.success) {
             console.error("[Email Error - Admin]:", emailResult.error);
-            return res.status(500).json({ success: false, message: "Failed to send OTP email. Please try again later." });
+            // Bypassing 500 error return
         }
         
         await newAdmin.save();
