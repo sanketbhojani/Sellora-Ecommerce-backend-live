@@ -430,11 +430,16 @@ router.post('/changePassword', protect, changePassword)
  *         application/json:
  *           schema:
  *             type: object
- *             required: [email]
+ *             required: [email, role]
  *             properties:
  *               email:
  *                 type: string
  *                 example: sanket@gmail.com
+ *               role:
+ *                 type: string
+ *                 enum: [customer, seller, admin]
+ *                 default: customer
+ *                 example: customer
  *     responses:
  *       200:
  *         description: Reset OTP sent to email.

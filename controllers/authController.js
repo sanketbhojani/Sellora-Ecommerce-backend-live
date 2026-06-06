@@ -434,34 +434,33 @@ const changePassword = async (req, res) => {
 
 const forgotPassword = async (req, res) => {
     try {
-        const { email } = req.body;
+        const { email, role } = req.body;
 
-        if (!email) {
-            return res.status(400).json({ success: false, message: "Please provide your email address" });
+        if (!email || !role) {
+            return res.status(400).json({ success: false, message: "Please provide email and role" });
         }
 
-        let { user, role: detectedRole } = await findUserAcrossRoles({ email });
+        const Model = getModelByRole(role);
+        const user = await Model.findOne({ email });
 
         if (!user) {
-            return res.status(404).json({ success: false, message: "No account found with this email" });
+            return res.status(404).json({ success: false, message: `No ${role} account found with this email` });
         }
 
-        const actualRole = user.role || detectedRole;
         const { otp, otpExpiry } = generateOTP();
 
-        // ✅ Save first — always succeeds
         user.otp = otp;
         user.otpExpiry = otpExpiry;
         await user.save();
 
-        // ✅ Email in background — never blocks response
-        sendPasswordResetEmail({ name: user.name, email: user.email, otp, role: actualRole }).catch(err =>
+        // Email in background
+        sendPasswordResetEmail({ name: user.name, email: user.email, otp, role }).catch(err =>
             console.error("[Email] forgotPassword failed:", err.message)
         );
 
         return res.status(200).json({
             success: true,
-            message: "A password reset code has been sent to your email.",
+            message: `A password reset code has been sent to your ${role} email.`,
             otp, // DEV only
         });
 
@@ -474,20 +473,20 @@ const forgotPassword = async (req, res) => {
 
 const resetPassword = async (req, res) => {
     try {
-        const { email, otp, newPassword, confirmNewPassword } = req.body;
+        const { email, role, otp, newPassword, confirmNewPassword } = req.body;
 
-        if (!email || !otp || !newPassword || !confirmNewPassword) {
-            return res.status(400).json({ success: false, message: "Please provide email, OTP, new password and confirm new password" });
+        if (!email || !role || !otp || !newPassword || !confirmNewPassword) {
+            return res.status(400).json({ success: false, message: "Please provide email, role, otp, new password and confirm new password" });
         }
         if (newPassword !== confirmNewPassword) {
             return res.status(400).json({ success: false, message: "New password and confirm new password do not match" });
         }
 
-        // ✅ Auto-detect role — no need to pass role in body
-        let { user } = await findUserAcrossRoles({ email });
+        const Model = getModelByRole(role);
+        const user = await Model.findOne({ email }).select("+otp +otpExpiry");
 
         if (!user) {
-            return res.status(404).json({ success: false, message: "No account found with this email" });
+            return res.status(404).json({ success: false, message: "No account found" });
         }
         if (String(otp) !== String(user.otp)) {
             return res.status(400).json({ success: false, message: "Invalid OTP code" });
