@@ -62,12 +62,10 @@ const registerCustomer = async (req, res) => {
 
         const newCustomer = new Customer({ name, email, password: hashedPassword, phone, otp, otpExpiry });
 
-        // ✅ Send email, but do NOT block user creation if it fails (to bypass Render SMTP limits)
-        const emailResult = await sendOTPEmail({ name, email, otp, role: "Customer" });
-        if (!emailResult.success) {
-            console.error("[Email Error - Customer]:", emailResult.error);
-            // Bypassing 500 error return so the API still succeeds and returns 201 with the OTP
-        }
+        // ✅ Send email in background — never blocks response
+        sendOTPEmail({ name, email, otp, role: "Customer" }).then(emailResult => {
+            if (!emailResult.success) console.error("[Email Error - Customer]:", emailResult.error);
+        }).catch(err => console.error("[Email Error - Customer]:", err.message));
         
         await newCustomer.save();
 
@@ -110,12 +108,10 @@ const registerSeller = async (req, res) => {
 
         const newSeller = new Seller({ name, email, password: hashedPassword, phone, shopName, shopDescription, otp, otpExpiry });
 
-        // ✅ Send email, but do NOT block user creation if it fails
-        const emailResult = await sendOTPEmail({ name, email, otp, role: "Seller" });
-        if (!emailResult.success) {
-            console.error("[Email Error - Seller]:", emailResult.error);
-            // Bypassing 500 error return
-        }
+        // ✅ Send email in background — never blocks response
+        sendOTPEmail({ name, email, otp, role: "Seller" }).then(emailResult => {
+            if (!emailResult.success) console.error("[Email Error - Seller]:", emailResult.error);
+        }).catch(err => console.error("[Email Error - Seller]:", err.message));
         
         await newSeller.save();
 
@@ -193,12 +189,10 @@ const registerAdmin = async (req, res) => {
             otpExpiry
         });
 
-        // ✅ Send email, but do NOT block user creation if it fails
-        const emailResult = await sendOTPEmail({ name, email, otp, role: "Admin" });
-        if (!emailResult.success) {
-            console.error("[Email Error - Admin]:", emailResult.error);
-            // Bypassing 500 error return
-        }
+        // ✅ Send email in background — never blocks response
+        sendOTPEmail({ name, email, otp, role: "Admin" }).then(emailResult => {
+            if (!emailResult.success) console.error("[Email Error - Admin]:", emailResult.error);
+        }).catch(err => console.error("[Email Error - Admin]:", err.message));
         
         await newAdmin.save();
 
