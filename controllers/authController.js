@@ -297,9 +297,7 @@ const resendOTP = async (req, res) => {
         if (!user) {
             return res.status(404).json({ success: false, message: "No account found with this ID" });
         }
-        if (user.isVerified) {
-            return res.status(400).json({ success: false, message: "Email is already verified" });
-        }
+        
 
         const actualRole = user.role || detectedRole;
         const { otp, otpExpiry } = generateOTP();
