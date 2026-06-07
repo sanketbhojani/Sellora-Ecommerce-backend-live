@@ -1,5 +1,5 @@
 import express from 'express'
-import { changePassword, forgetpassword2, forgotPassword, getMe, initiateManualVerification, login, logout, registerAdmin, registerCustomer, registerSeller, resendOTP, resetPassword, resetpassword2, verifyOTP, refreshToken } from '../controllers/authController.js';
+import { changePassword, forgetpassword2, forgotPassword, getMe, initiateManualVerification, login, logout, registerAdmin, registerCustomer, registerSeller, resendOTP, resetPassword, resetpassword2, verifyOTP, refreshToken, verifyPasswordResetOTP } from '../controllers/authController.js';
 import { authorizeRoles, protect } from '../middlewares/authMiddleware.js';
 
 const router = express.Router();
@@ -464,6 +464,34 @@ router.post('/changePassword', protect, changePassword)
  *         description: Email sending failed
  */
 router.post('/forgotPassword', forgotPassword)
+
+/**
+ * @swagger
+ * /auth/verifyPasswordResetOTP:
+ *   post:
+ *     summary: Verify password reset OTP
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [otp]
+ *             properties:
+ *               userId:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               otp:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: OTP verified successfully
+ *       400:
+ *         description: Invalid OTP
+ */
+router.post('/verifyPasswordResetOTP', verifyPasswordResetOTP)
 
 /**
  * @swagger

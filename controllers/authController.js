@@ -461,8 +461,45 @@ const forgotPassword = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: `A password reset code has been sent to your ${role} email.`,
+            userId: user._id,
             otp, // DEV only
         });
+
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// ─── VERIFY PASSWORD RESET OTP ────────────────────────────────
+
+const verifyPasswordResetOTP = async (req, res) => {
+    try {
+        const { userId, email, otp, role } = req.body;
+
+        if ((!userId && !email) || !otp) {
+            return res.status(400).json({ success: false, message: "Please provide user ID/email and OTP" });
+        }
+
+        let user;
+        if (userId) {
+            const result = await findUserAcrossRoles({ userId });
+            user = result.user;
+        } else {
+            const Model = getModelByRole(role);
+            user = await Model.findOne({ email }).select("+otp +otpExpiry");
+        }
+
+        if (!user) {
+            return res.status(404).json({ success: false, message: "No account found" });
+        }
+        if (String(otp) !== String(user.otp)) {
+            return res.status(400).json({ success: false, message: "Invalid OTP code" });
+        }
+        if (user.otpExpiry < new Date()) {
+            return res.status(400).json({ success: false, message: "OTP has expired. Please request a new one." });
+        }
+
+        return res.status(200).json({ success: true, message: "OTP verified successfully. You can now reset your password.", userId: user._id });
 
     } catch (error) {
         return res.status(500).json({ success: false, message: error.message });
@@ -473,17 +510,23 @@ const forgotPassword = async (req, res) => {
 
 const resetPassword = async (req, res) => {
     try {
-        const { email, role, otp, newPassword, confirmNewPassword } = req.body;
+        const { userId, email, role, otp, newPassword, confirmNewPassword } = req.body;
 
-        if (!email || !role || !otp || !newPassword || !confirmNewPassword) {
-            return res.status(400).json({ success: false, message: "Please provide email, role, otp, new password and confirm new password" });
+        if ((!userId && !email) || !otp || !newPassword || !confirmNewPassword) {
+            return res.status(400).json({ success: false, message: "Please provide all required fields" });
         }
         if (newPassword !== confirmNewPassword) {
             return res.status(400).json({ success: false, message: "New password and confirm new password do not match" });
         }
 
-        const Model = getModelByRole(role);
-        const user = await Model.findOne({ email }).select("+otp +otpExpiry");
+        let user;
+        if (userId) {
+            const result = await findUserAcrossRoles({ userId });
+            user = result.user;
+        } else {
+            const Model = getModelByRole(role);
+            user = await Model.findOne({ email }).select("+otp +otpExpiry");
+        }
 
         if (!user) {
             return res.status(404).json({ success: false, message: "No account found" });
@@ -623,6 +666,7 @@ const forgetpassword2 = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: `A password reset code has been sent to your ${role} email.`,
+            userId: user._id,
             otp, // DEV only
         });
 
@@ -635,17 +679,23 @@ const forgetpassword2 = async (req, res) => {
 
 const resetpassword2 = async (req, res) => {
     try {
-        const { email, role, otp, newPassword, confirmNewPassword } = req.body;
+        const { userId, email, role, otp, newPassword, confirmNewPassword } = req.body;
 
-        if (!email || !role || !otp || !newPassword || !confirmNewPassword) {
-            return res.status(400).json({ success: false, message: "Please provide email, role, otp, new password and confirm new password" });
+        if ((!userId && !email) || !otp || !newPassword || !confirmNewPassword) {
+            return res.status(400).json({ success: false, message: "Please provide all required fields" });
         }
         if (newPassword !== confirmNewPassword) {
             return res.status(400).json({ success: false, message: "New password and confirm new password do not match" });
         }
 
-        const Model = getModelByRole(role);
-        const user = await Model.findOne({ email }).select("+otp +otpExpiry");
+        let user;
+        if (userId) {
+            const result = await findUserAcrossRoles({ userId });
+            user = result.user;
+        } else {
+            const Model = getModelByRole(role);
+            user = await Model.findOne({ email }).select("+otp +otpExpiry");
+        }
 
         if (!user) {
             return res.status(404).json({ success: false, message: "No account found" });
@@ -720,5 +770,6 @@ export {
     initiateManualVerification,
     forgetpassword2,
     resetpassword2,
-    refreshToken
+    refreshToken,
+    verifyPasswordResetOTP
 };
