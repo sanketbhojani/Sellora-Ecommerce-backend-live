@@ -254,7 +254,6 @@ const verifyOTP = async (req, res) => {
 
         const cookieName = getCookieNameByRole(detectedRole);
         res.cookie(cookieName, accessToken, { httpOnly: true, sameSite: "strict", maxAge: 15 * 60 * 1000 });
-        res.cookie(`${cookieName}Refresh`, refreshToken, { httpOnly: true, sameSite: "strict", maxAge: 7 * 24 * 60 * 60 * 1000 });
 
         return res.status(200).json({
             success: true,
@@ -366,7 +365,6 @@ const login = async (req, res) => {
 
         const cookieName = getCookieNameByRole(role);
         res.cookie(cookieName, accessToken, { httpOnly: true, sameSite: "strict", maxAge: 15 * 60 * 1000 });
-        res.cookie(`${cookieName}Refresh`, refreshToken, { httpOnly: true, sameSite: "strict", maxAge: 7 * 24 * 60 * 60 * 1000 });
 
         return res.status(200).json({
             success: true,
@@ -579,7 +577,6 @@ const logout = async (req, res) => {
         }
 
         res.clearCookie(cookieName, { httpOnly: true, sameSite: "strict" });
-        res.clearCookie(`${cookieName}Refresh`, { httpOnly: true, sameSite: "strict" });
         res.clearCookie("token", { httpOnly: true, sameSite: "strict" });
 
         return res.status(200).json({ success: true, message: "Logged out successfully" });
@@ -723,18 +720,37 @@ const refreshToken = async (req, res) => {
     try {
         const role = req.headers['x-role'] || 'customer';
         const cookieName = getCookieNameByRole(role);
-        const token = req.cookies[`${cookieName}Refresh`];
-
-        if (!token) {
-            return res.status(401).json({ success: false, message: "No refresh token found" });
+        
+        let accessToken = req.cookies[cookieName];
+        if (!accessToken && req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+            accessToken = req.headers.authorization.split(' ')[1];
         }
 
-        const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET || (process.env.JWT_SECRET + 'refresh_secret_fallback'));
+        if (!accessToken) {
+            return res.status(401).json({ success: false, message: "No access token found" });
+        }
+
+        let decoded;
+        try {
+            decoded = jwt.verify(accessToken, process.env.JWT_SECRET, { ignoreExpiration: true });
+        } catch (err) {
+            return res.status(401).json({ success: false, message: "Invalid access token" });
+        }
+
         const Model = getModelByRole(decoded.role);
         const user = await Model.findById(decoded.id);
 
-        if (!user || user.refreshToken !== token) {
-            return res.status(401).json({ success: false, message: "Invalid refresh token" });
+        if (!user || !user.refreshToken) {
+            return res.status(401).json({ success: false, message: "Invalid session" });
+        }
+
+        // Verify the stored refresh token
+        try {
+            jwt.verify(user.refreshToken, process.env.JWT_REFRESH_SECRET || (process.env.JWT_SECRET + 'refresh_secret_fallback'));
+        } catch (err) {
+            user.refreshToken = null;
+            await user.save();
+            return res.status(401).json({ success: false, message: "Session expired, please login again" });
         }
 
         const newAccessToken = generateAccessToken(user._id, decoded.role);
@@ -744,12 +760,11 @@ const refreshToken = async (req, res) => {
         await user.save();
 
         res.cookie(cookieName, newAccessToken, { httpOnly: true, sameSite: "strict", maxAge: 15 * 60 * 1000 });
-        res.cookie(`${cookieName}Refresh`, newRefreshToken, { httpOnly: true, sameSite: "strict", maxAge: 7 * 24 * 60 * 60 * 1000 });
 
         return res.status(200).json({ success: true, token: newAccessToken });
 
     } catch (error) {
-        return res.status(401).json({ success: false, message: "Refresh token is invalid or expired" });
+        return res.status(401).json({ success: false, message: "Failed to refresh token" });
     }
 };
 
